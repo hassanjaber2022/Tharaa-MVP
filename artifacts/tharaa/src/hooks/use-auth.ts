@@ -12,6 +12,7 @@ export function useAuth() {
   const { data: user, isLoading, error } = useGetCurrentUser({
     query: {
       retry: false,
+      queryKey: getGetCurrentUserQueryKey(),
     },
   });
 

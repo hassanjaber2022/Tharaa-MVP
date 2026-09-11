@@ -1,5 +1,9 @@
 import { useRoute, Link } from 'wouter';
-import { useGetPlan, PlanStatus } from '@workspace/api-client-react';
+import {
+  getGetPlanQueryKey,
+  useGetPlan,
+  PlanStatus,
+} from '@workspace/api-client-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { 
@@ -22,6 +26,7 @@ export default function PlanDetail() {
   const { data: plan, isLoading, error } = useGetPlan(id, {
     query: {
       enabled: !!id,
+      queryKey: getGetPlanQueryKey(id),
     }
   });
 
@@ -55,10 +60,10 @@ export default function PlanDetail() {
   }
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('ar-SA', {
+    return new Intl.NumberFormat('ar-KW', {
       style: 'currency',
-      currency: 'SAR',
-      maximumFractionDigits: 0,
+      currency: 'KWD',
+      maximumFractionDigits: 2,
     }).format(amount);
   };
 
