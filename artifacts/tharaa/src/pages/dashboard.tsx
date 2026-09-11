@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { Link } from 'wouter';
-import { useGetDashboard } from '@workspace/api-client-react';
+import { useGetDashboard, useGetProfile } from '@workspace/api-client-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -10,14 +11,18 @@ import {
   ShieldCheck,
   TrendingUp,
   ArrowLeft,
-  FileText
+   FileText,
+   Activity,
+   Plus,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { arSA } from 'date-fns/locale';
 import { formatCurrency } from '@/lib/utils';
 
 export default function Dashboard() {
+  const [monthlyBoost, setMonthlyBoost] = useState(25);
   const { data: dashboard, isLoading, error } = useGetDashboard();
+  const { data: profile } = useGetProfile();
 
   if (isLoading) {
     return (
@@ -47,12 +52,24 @@ export default function Dashboard() {
   }
 
   const { user, profileComplete, activePlan, emergencyProgress, planCount, recommendation } = dashboard;
+  const savingsRate = profile?.monthlyIncome
+    ? Math.max(0, Math.min(100, (profile.monthlyCapacity / profile.monthlyIncome) * 100))
+    : 0;
+  const pulseProgress = Math.min(100, (savingsRate / 20) * 100);
+  const pulseLabel =
+    savingsRate >= 20
+      ? 'مساحة ادخار قوية'
+      : savingsRate >= 10
+        ? 'بداية متوازنة'
+        : savingsRate > 0
+          ? 'خطوة قابلة للنمو'
+          : 'ابدأ بمبلغ بسيط';
 
   return (
     <div className="container max-w-6xl mx-auto py-8 px-4 pb-24">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-bold mb-2">مرحباً، {user.name.split(' ')[0]} 👋</h1>
+          <h1 className="text-3xl font-bold mb-2">مرحباً، {user.name.split(' ')[0]}</h1>
           <p className="text-muted-foreground text-lg">إليك ملخص وضعك المالي اليوم</p>
         </div>
         
@@ -91,6 +108,81 @@ export default function Dashboard() {
           </Link>
         </Card>
       ) : null}
+
+      {profileComplete && profile && (
+        <Card className="mb-8 overflow-hidden rounded-3xl border-primary/15 bg-card shadow-sm">
+          <div className="grid lg:grid-cols-[1.1fr_0.9fr]">
+            <div className="p-6 md:p-8">
+              <div className="mb-6 flex items-start justify-between gap-4">
+                <div>
+                  <div className="mb-2 flex items-center gap-2 text-primary">
+                    <Activity className="h-5 w-5" />
+                    <span className="text-sm font-bold">نبضتك المالية</span>
+                  </div>
+                  <h2 className="text-2xl font-bold" data-testid="text-financial-pulse-label">
+                    {pulseLabel}
+                  </h2>
+                </div>
+                <div className="rounded-2xl bg-primary/8 px-4 py-3 text-center">
+                  <span className="block text-2xl font-bold text-primary" data-testid="text-savings-rate">
+                    {Math.round(savingsRate)}%
+                  </span>
+                  <span className="text-xs text-muted-foreground">من الدخل</span>
+                </div>
+              </div>
+
+              <Progress
+                value={pulseProgress}
+                className="mb-3 h-3 bg-muted [&>div]:bg-primary"
+                aria-label="التقدم نحو تخصيص عشرين بالمئة من الدخل"
+              />
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                تخصص حالياً {formatCurrency(profile.monthlyCapacity)} شهرياً. المؤشر يقارن هذه
+                النسبة بمرجع عملي قدره 20%، وليس تقييماً ائتمانياً أو توصية استثمارية.
+              </p>
+            </div>
+
+            <div className="border-t border-border/60 bg-primary/[0.035] p-6 md:p-8 lg:border-s lg:border-t-0">
+              <div className="mb-5">
+                <p className="mb-1 text-sm font-bold text-primary">جرّب خطوة صغيرة</p>
+                <h3 className="text-xl font-bold">ماذا لو زدت مساهمتك الشهرية؟</h3>
+              </div>
+
+              <div className="mb-5 flex flex-wrap gap-2" aria-label="اختر قيمة الزيادة الشهرية">
+                {[10, 25, 50].map((amount) => (
+                  <Button
+                    key={amount}
+                    type="button"
+                    variant={monthlyBoost === amount ? 'default' : 'outline'}
+                    size="sm"
+                    className="h-10 min-w-20 rounded-xl"
+                    onClick={() => setMonthlyBoost(amount)}
+                    data-testid={`button-monthly-boost-${amount}`}
+                    aria-pressed={monthlyBoost === amount}
+                  >
+                    <Plus className="me-1 h-4 w-4" />
+                    {formatCurrency(amount, 0)}
+                  </Button>
+                ))}
+              </div>
+
+              <div className="mb-5 rounded-2xl border border-primary/10 bg-background p-4">
+                <p className="text-sm text-muted-foreground">إضافة خلال سنة، قبل أي عائد</p>
+                <p className="mt-1 text-2xl font-bold text-primary" data-testid="text-annual-boost">
+                  {formatCurrency(monthlyBoost * 12)}
+                </p>
+              </div>
+
+              <Link href="/calculator">
+                <Button variant="outline" className="w-full rounded-xl" data-testid="button-try-boost-calculator">
+                  جرّبها في الحاسبة
+                  <ArrowLeft className="ms-2 h-4 w-4" />
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </Card>
+      )}
 
       <div className="grid md:grid-cols-3 gap-6 mb-8">
         <Card className="p-6 rounded-3xl border-border/50 shadow-sm relative overflow-hidden">
