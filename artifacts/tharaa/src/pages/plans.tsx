@@ -1,15 +1,8 @@
-import { useListPlans, PlanStatus } from '@workspace/api-client-react';
 import { Link } from 'wouter';
+import { useListPlans } from '@workspace/api-client-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { 
-  ArrowLeft, 
-  Calendar, 
-  Plus, 
-  FileText,
-  Clock,
-  CheckCircle2
-} from 'lucide-react';
+import { Wallet, Target, Plus, ArrowLeft, MoreHorizontal, Calendar, Activity } from 'lucide-react';
 import { format } from 'date-fns';
 import { arSA } from 'date-fns/locale';
 import { formatCurrency } from '@/lib/utils';
@@ -19,12 +12,12 @@ export default function Plans() {
 
   if (isLoading) {
     return (
-      <div className="container max-w-5xl mx-auto py-12 px-4">
+      <div className="container max-w-screen-xl mx-auto py-12 px-4">
         <div className="animate-pulse space-y-6">
-          <div className="h-10 w-48 bg-muted rounded-xl"></div>
+          <div className="h-12 w-64 bg-muted rounded-xl mb-8"></div>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[1, 2, 3].map(i => (
-              <div key={i} className="h-48 bg-muted rounded-3xl"></div>
+              <div key={i} className="h-64 bg-muted rounded-[2rem]"></div>
             ))}
           </div>
         </div>
@@ -34,92 +27,96 @@ export default function Plans() {
 
   if (error) {
     return (
-      <div className="container max-w-5xl mx-auto py-12 px-4 text-center">
-        <div className="bg-destructive/10 text-destructive p-6 rounded-2xl inline-block mb-4">
-          حدث خطأ أثناء تحميل الخطط
-        </div>
+      <div className="container max-w-screen-xl mx-auto py-20 px-4 text-center">
+        <p className="text-destructive font-bold mb-4">حدث خطأ أثناء تحميل الخطط</p>
       </div>
     );
   }
 
-  const getStatusBadge = (status: PlanStatus) => {
-    switch (status) {
-      case 'active':
-        return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-600"><CheckCircle2 className="h-3 w-3" /> نشطة</span>;
-      case 'paused':
-        return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-600"><Clock className="h-3 w-3" /> متوقفة</span>;
-      case 'archived':
-        return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-muted text-muted-foreground">مؤرشفة</span>;
-    }
-  };
-
   return (
-    <div className="container max-w-5xl mx-auto py-8 px-4 pb-24">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+    <div className="container max-w-screen-xl mx-auto py-12 px-4 pb-32">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
         <div>
-          <h1 className="text-3xl font-bold mb-2">خططي المحفوظة</h1>
-          <p className="text-muted-foreground">راجع خططك واستراتيجياتك للمستقبل</p>
+          <div className="flex items-center gap-3 mb-2">
+            <Wallet className="h-8 w-8 text-primary" />
+            <h1 className="text-4xl font-display font-bold tracking-tight text-foreground">خططي المالية</h1>
+          </div>
+          <p className="text-muted-foreground font-medium text-lg">
+            قم بإدارة وتتبع جميع السيناريوهات التي حفظتها
+          </p>
         </div>
+        
         <Link href="/calculator">
-          <Button className="rounded-xl" data-testid="button-new-plan">
-            <Plus className="me-2 h-5 w-5" />
+          <Button className="h-12 px-8 rounded-full font-bold shadow-lg shadow-primary/20 hover:scale-105 transition-all text-base bg-primary hover:bg-primary/90">
+            <Plus className="ml-2 h-5 w-5" />
             خطة جديدة
           </Button>
         </Link>
       </div>
 
       {!plans || plans.length === 0 ? (
-        <Card className="p-12 rounded-3xl border-dashed border-2 bg-muted/20 text-center flex flex-col items-center justify-center">
-          <FileText className="h-16 w-16 text-muted-foreground/50 mb-4" />
-          <h2 className="text-2xl font-bold mb-2">لا توجد خطط محفوظة</h2>
-          <p className="text-muted-foreground mb-6 max-w-md">
-            استخدم الحاسبة الذكية لإنشاء خطتك الأولى وحفظها للعودة إليها لاحقاً.
+        <Card className="glass-card p-12 text-center rounded-[2rem] border-dashed border-2 border-border">
+          <div className="inline-flex items-center justify-center h-24 w-24 rounded-full bg-muted/50 mb-6">
+            <Target className="h-10 w-10 text-muted-foreground" />
+          </div>
+          <h2 className="text-2xl font-display font-bold mb-3">لا توجد خطط محفوظة</h2>
+          <p className="text-muted-foreground font-medium mb-8 max-w-md mx-auto">
+            استخدم الحاسبة الذكية لاستكشاف نمو ثروتك واحفظ أفضل السيناريوهات للرجوع إليها هنا.
           </p>
           <Link href="/calculator">
-            <Button size="lg" className="rounded-xl" data-testid="button-start-now">ابدأ الآن</Button>
+            <Button size="lg" className="rounded-full px-10 h-14 font-bold text-lg">
+              جرب الحاسبة الآن
+            </Button>
           </Link>
         </Card>
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {plans.map(plan => (
-            <Card key={plan.id} className="p-6 rounded-3xl border-border/50 shadow-sm hover:shadow-md transition-shadow relative group">
-              <div className="flex justify-between items-start mb-4">
-                {getStatusBadge(plan.status)}
-                <span className={`text-xs font-bold px-2 py-1 rounded-md ${
-                  plan.scenario === 'conservative' ? 'text-chart-3 bg-chart-3/10' : 
-                  plan.scenario === 'balanced' ? 'text-secondary bg-secondary/10' : 'text-primary bg-primary/10'
-                }`}>
-                  {plan.scenario === 'conservative' ? 'متحفظ' : plan.scenario === 'balanced' ? 'متوازن' : 'نمو عالي'}
-                </span>
+          {plans.map((plan) => (
+            <Card key={plan.id} className="glass-card rounded-[2rem] overflow-hidden flex flex-col hover:border-primary/30 transition-colors group">
+              <div className="p-6 md:p-8 flex-1">
+                <div className="flex justify-between items-start mb-6">
+                  <div className={`px-4 py-1.5 rounded-full text-xs font-bold ${
+                    plan.status === 'active' ? 'bg-primary text-white shadow-sm shadow-primary/20' : 
+                    plan.status === 'paused' ? 'bg-secondary text-secondary-foreground' : 'bg-muted text-muted-foreground'
+                  }`}>
+                    {plan.status === 'active' ? 'نشطة' : plan.status === 'paused' ? 'متوقفة' : 'مؤرشفة'}
+                  </div>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-muted-foreground group-hover:text-foreground">
+                    <MoreHorizontal className="h-5 w-5" />
+                  </Button>
+                </div>
+                
+                <h3 className="text-2xl font-display font-bold mb-2 line-clamp-1">{plan.title || 'خطة مالية'}</h3>
+                
+                <div className="flex items-center gap-2 text-sm text-muted-foreground font-medium mb-8">
+                  <Calendar className="h-4 w-4" />
+                  <span>أنشئت في {format(new Date(plan.createdAt), 'MMMM yyyy', { locale: arSA })}</span>
+                </div>
+
+                <div className="space-y-4 mb-8">
+                  <div className="flex justify-between items-center pb-4 border-b border-border/50">
+                    <span className="text-sm font-bold text-muted-foreground">الهدف الاسمي</span>
+                    <span className="text-lg font-display font-bold">{formatCurrency(plan.estimatedValue)}</span>
+                  </div>
+                  <div className="flex justify-between items-center pb-4 border-b border-border/50">
+                    <span className="text-sm font-bold text-muted-foreground">المساهمة الشهرية</span>
+                    <span className="text-lg font-display font-bold">{formatCurrency(plan.monthlyContribution)}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-bold text-muted-foreground">النمط</span>
+                    <span className="text-sm font-bold bg-muted px-3 py-1 rounded-lg">
+                      {plan.scenario === 'conservative' ? 'متحفظ' : plan.scenario === 'balanced' ? 'متوازن' : 'نمو عالي'}
+                    </span>
+                  </div>
+                </div>
               </div>
               
-              <h3 className="text-xl font-bold mb-1 truncate">{plan.title || 'خطة بدون عنوان'}</h3>
-              <p className="text-xs text-muted-foreground flex items-center gap-1 mb-5">
-                <Calendar className="h-3 w-3" />
-                {format(new Date(plan.createdAt), 'dd MMM yyyy', { locale: arSA })}
-              </p>
-              
-              <div className="space-y-3 mb-6">
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1">الهدف المتوقع</p>
-                  <p className="font-bold">{formatCurrency(plan.estimatedValue)}</p>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">المساهمة</p>
-                    <p className="font-semibold text-sm">{formatCurrency(plan.monthlyContribution)}/ش</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">المدة</p>
-                    <p className="font-semibold text-sm">{plan.targetAge - plan.currentAge} سنة</p>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="pt-4 border-t border-border/50">
-                <Link href={`/plans/${plan.id}`} className="flex items-center text-sm font-medium text-primary group-hover:underline">
-                  عرض التفاصيل
-                  <ArrowLeft className="ms-2 h-4 w-4" />
+              <div className="bg-primary/5 p-4 border-t border-primary/10 flex justify-end">
+                <Link href={`/plans/${plan.id}`} className="w-full">
+                  <Button variant="ghost" className="w-full justify-between rounded-xl h-12 font-bold hover:bg-primary/10 hover:text-primary">
+                    التفاصيل
+                    <ArrowLeft className="h-5 w-5" />
+                  </Button>
                 </Link>
               </div>
             </Card>

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -23,7 +23,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Card } from '@/components/ui/card';
-import { Wallet, Target, Activity } from 'lucide-react';
+import { Wallet, Target, Activity, ArrowRight, Sparkles } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 
 const profileSchema = z.object({
@@ -47,6 +47,12 @@ export default function Onboarding() {
   const queryClient = useQueryClient();
 
   const { data: profile, isLoading: isLoadingProfile } = useGetProfile();
+
+  useEffect(() => {
+    if (!isLoadingProfile && profile) {
+      setLocation('/dashboard');
+    }
+  }, [isLoadingProfile, profile, setLocation]);
   
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
@@ -64,40 +70,20 @@ export default function Onboarding() {
     },
   });
 
-  const initialized = useRef(false);
-
-  useEffect(() => {
-    if (profile && !initialized.current) {
-      form.reset({
-        currentAge: profile.currentAge,
-        targetAge: profile.targetAge,
-        monthlyIncome: profile.monthlyIncome,
-        essentialExpenses: profile.essentialExpenses,
-        obligations: profile.obligations,
-        currentSavings: profile.currentSavings,
-        monthlyCapacity: profile.monthlyCapacity,
-        desiredFutureIncome: profile.desiredFutureIncome,
-        emergencyMonths: profile.emergencyMonths,
-        riskCategory: profile.riskCategory,
-      });
-      initialized.current = true;
-    }
-  }, [profile, form]);
-
   const updateProfileMutation = useUpdateProfile({
     mutation: {
       onSuccess: (data) => {
         queryClient.setQueryData(getGetProfileQueryKey(), data);
         toast({
-          title: 'تم حفظ الملف المالي',
-          description: 'يمكنك الآن استخدام الحاسبة لإنشاء خطتك',
+          title: 'رائع، تم الحفظ!',
+          description: 'خطوتك الأولى نحو الحرية المالية اكتملت.',
         });
         setLocation('/dashboard');
       },
       onError: (error: any) => {
         toast({
           variant: 'destructive',
-          title: 'فشل حفظ البيانات',
+          title: 'حدث خطأ',
           description: error.response?.data?.error || 'يرجى المحاولة مرة أخرى',
         });
       },
@@ -115,86 +101,92 @@ export default function Onboarding() {
 
   if (isLoadingProfile) {
     return (
-      <div className="container mx-auto py-12 flex justify-center">
-        <div className="animate-pulse flex flex-col items-center gap-4">
-          <div className="h-8 w-48 bg-muted rounded"></div>
-          <div className="h-64 w-full max-w-2xl bg-muted rounded-2xl"></div>
+      <div className="container mx-auto py-16 flex justify-center">
+        <div className="animate-pulse flex flex-col items-center gap-6">
+          <div className="h-10 w-64 bg-muted rounded-full"></div>
+          <div className="h-[600px] w-full max-w-4xl bg-muted/50 rounded-3xl"></div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="container max-w-3xl mx-auto py-12 px-4 pb-24">
-      <div className="mb-10 text-center md:text-start">
-        <div className="mb-4 inline-flex items-center rounded-full border border-primary/15 bg-primary/5 px-4 py-2 text-sm font-medium text-primary">
-          إعداد الملف المالي · 3 أجزاء · نحو 3 دقائق
+    <div className="container max-w-4xl mx-auto py-12 px-4 pb-32">
+      <div className="mb-12 text-center md:text-start flex flex-col items-center md:items-start">
+        <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-secondary/30 bg-secondary/10 px-5 py-2 text-sm font-bold text-secondary-foreground shadow-sm">
+          <Sparkles className="h-4 w-4" />
+          إعداد الملف المالي · يستغرق حوالي 3 دقائق
         </div>
-        <h1 className="text-3xl font-bold mb-3">ملفك المالي</h1>
-        <p className="text-muted-foreground text-lg">
-          أدخل تقديراتك الحالية، ويمكنك تعديلها لاحقاً في أي وقت. لا تحتاج إلى أرقام دقيقة حتى تبدأ.
+        <h1 className="text-4xl md:text-5xl font-display font-bold tracking-tight mb-4 text-foreground">
+          لنصمم مستقبلك المالي
+        </h1>
+        <p className="text-muted-foreground text-lg md:text-xl max-w-2xl font-medium leading-relaxed">
+          أدخل تقديراتك الحالية، يمكنك التعديل لاحقاً. لا بأس إذا لم تكن الأرقام دقيقة تماماً، الأهم هو أن تبدأ.
         </p>
       </div>
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-10">
           
-          <Card className="p-6 md:p-8 rounded-3xl border-border/50 shadow-sm">
-            <div className="flex items-center gap-3 mb-6 border-b border-border/50 pb-4">
-              <div className="p-2 bg-primary/10 rounded-lg text-primary">
-                <Wallet className="h-5 w-5" />
+          <Card className="glass-card p-8 md:p-10 rounded-3xl border-primary/20">
+            <div className="flex items-center gap-4 mb-8 border-b border-border/50 pb-6">
+              <div className="p-4 bg-primary rounded-2xl text-primary-foreground shadow-lg shadow-primary/30">
+                <Wallet className="h-7 w-7" />
               </div>
-              <h2 className="text-xl font-bold">الوضع المالي الحالي</h2>
+              <div>
+                <h2 className="text-2xl font-display font-bold">نقطة الانطلاق</h2>
+                <p className="text-muted-foreground font-medium mt-1">الوضع المالي الحالي</p>
+              </div>
             </div>
             
-            <div className="grid md:grid-cols-2 gap-6">
+            <div className="grid md:grid-cols-2 gap-x-8 gap-y-8">
               <FormField control={form.control} name="currentAge" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>عمرك الحالي</FormLabel>
-                  <FormControl><Input type="number" inputMode="numeric" {...field} /></FormControl>
+                  <FormLabel className="text-base font-semibold">عمرك الحالي</FormLabel>
+                  <FormControl><Input className="h-14 rounded-2xl text-lg bg-background/50 border-border/50 focus:border-primary px-4" type="number" inputMode="numeric" {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
               
               <FormField control={form.control} name="monthlyIncome" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>الدخل الشهري (د.ك)</FormLabel>
-                  <FormControl><Input type="number" inputMode="numeric" {...field} /></FormControl>
+                  <FormLabel className="text-base font-semibold">الدخل الشهري (د.ك)</FormLabel>
+                  <FormControl><Input className="h-14 rounded-2xl text-lg bg-background/50 border-border/50 focus:border-primary px-4" type="number" inputMode="numeric" {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
               
               <FormField control={form.control} name="essentialExpenses" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>المصاريف الأساسية (إيجار، فواتير...) (د.ك)</FormLabel>
-                  <FormControl><Input type="number" inputMode="numeric" {...field} /></FormControl>
+                  <FormLabel className="text-base font-semibold">المصاريف الأساسية (إيجار، فواتير...) (د.ك)</FormLabel>
+                  <FormControl><Input className="h-14 rounded-2xl text-lg bg-background/50 border-border/50 focus:border-primary px-4" type="number" inputMode="numeric" {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
               
               <FormField control={form.control} name="obligations" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>الالتزامات والديون الشهرية (د.ك)</FormLabel>
-                  <FormControl><Input type="number" inputMode="numeric" {...field} /></FormControl>
+                  <FormLabel className="text-base font-semibold">الالتزامات والديون الشهرية (د.ك)</FormLabel>
+                  <FormControl><Input className="h-14 rounded-2xl text-lg bg-background/50 border-border/50 focus:border-primary px-4" type="number" inputMode="numeric" {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
               
               <FormField control={form.control} name="currentSavings" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>المدخرات الحالية (إجمالي) (د.ك)</FormLabel>
-                  <FormControl><Input type="number" inputMode="numeric" {...field} /></FormControl>
+                  <FormLabel className="text-base font-semibold">المدخرات الحالية المتوفرة (د.ك)</FormLabel>
+                  <FormControl><Input className="h-14 rounded-2xl text-lg bg-background/50 border-border/50 focus:border-primary px-4" type="number" inputMode="numeric" {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
               
               <FormField control={form.control} name="monthlyCapacity" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>القدرة الشهرية للادخار/الاستثمار (د.ك)</FormLabel>
-                  <FormControl><Input type="number" inputMode="numeric" {...field} /></FormControl>
-                  <FormDescription>
-                    المبلغ الذي تستطيع تخصيصه دون ضغط. الفائض المحسوب من بياناتك هو{' '}
-                    <strong className="font-semibold text-foreground">
+                  <FormLabel className="text-base font-semibold text-primary">القدرة الشهرية للادخار والاستثمار (د.ك)</FormLabel>
+                  <FormControl><Input className="h-14 rounded-2xl text-lg bg-primary/5 border-primary/20 focus:border-primary px-4" type="number" inputMode="numeric" {...field} /></FormControl>
+                  <FormDescription className="text-sm font-medium mt-2">
+                    المبلغ الفائض المحسوب تلقائياً:{' '}
+                    <strong className="font-bold text-primary">
                       {formatCurrency(suggestedCapacity)}
                     </strong>
                   </FormDescription>
@@ -204,66 +196,71 @@ export default function Onboarding() {
             </div>
           </Card>
 
-          <Card className="p-6 md:p-8 rounded-3xl border-border/50 shadow-sm">
-            <div className="flex items-center gap-3 mb-6 border-b border-border/50 pb-4">
-              <div className="p-2 bg-secondary/10 rounded-lg text-secondary">
-                <Target className="h-5 w-5" />
+          <Card className="glass-card p-8 md:p-10 rounded-3xl border-secondary/20">
+            <div className="flex items-center gap-4 mb-8 border-b border-border/50 pb-6">
+              <div className="p-4 bg-secondary rounded-2xl text-secondary-foreground shadow-lg shadow-secondary/30">
+                <Target className="h-7 w-7" />
               </div>
-              <h2 className="text-xl font-bold">الأهداف المستقبلية</h2>
+              <div>
+                <h2 className="text-2xl font-display font-bold">الوجهة</h2>
+                <p className="text-muted-foreground font-medium mt-1">الأهداف والتطلعات المستقبلية</p>
+              </div>
             </div>
             
-            <div className="grid md:grid-cols-2 gap-6">
+            <div className="grid md:grid-cols-2 gap-x-8 gap-y-8">
               <FormField control={form.control} name="targetAge" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>العمر المستهدف للحرية المالية</FormLabel>
-                  <FormControl><Input type="number" inputMode="numeric" {...field} /></FormControl>
+                  <FormLabel className="text-base font-semibold">العمر المستهدف للتقاعد / الحرية المالية</FormLabel>
+                  <FormControl><Input className="h-14 rounded-2xl text-lg bg-background/50 border-border/50 focus:border-primary px-4" type="number" inputMode="numeric" {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
               
               <FormField control={form.control} name="desiredFutureIncome" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>الدخل الشهري المرغوب بعد التقاعد (د.ك)</FormLabel>
-                  <FormControl><Input type="number" inputMode="numeric" {...field} /></FormControl>
+                  <FormLabel className="text-base font-semibold">الدخل الشهري المرغوب وقتها (د.ك)</FormLabel>
+                  <FormControl><Input className="h-14 rounded-2xl text-lg bg-background/50 border-border/50 focus:border-primary px-4" type="number" inputMode="numeric" {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
               
               <FormField control={form.control} name="emergencyMonths" render={({ field }) => (
                 <FormItem className="md:col-span-2">
-                  <FormLabel>تغطية صندوق الطوارئ (بالأشهر)</FormLabel>
-                  <FormControl><Input type="number" inputMode="numeric" {...field} /></FormControl>
-                  <FormDescription>ينصح بـ 3 إلى 6 أشهر من المصاريف الأساسية</FormDescription>
+                  <FormLabel className="text-base font-semibold">حجم صندوق الطوارئ (بالأشهر)</FormLabel>
+                  <FormControl><Input className="h-14 rounded-2xl text-lg bg-background/50 border-border/50 focus:border-primary px-4" type="number" inputMode="numeric" {...field} /></FormControl>
+                  <FormDescription className="text-sm font-medium mt-2">كم شهر تود أن تغطي مدخرات الطوارئ من مصاريفك الأساسية؟ (ينصح بـ 3-6 أشهر)</FormDescription>
                   <FormMessage />
                 </FormItem>
               )} />
             </div>
           </Card>
 
-          <Card className="p-6 md:p-8 rounded-3xl border-border/50 shadow-sm">
-            <div className="flex items-center gap-3 mb-6 border-b border-border/50 pb-4">
-              <div className="p-2 bg-emerald-500/10 rounded-lg text-emerald-500">
-                <Activity className="h-5 w-5" />
+          <Card className="glass-card p-8 md:p-10 rounded-3xl border-accent/20">
+            <div className="flex items-center gap-4 mb-8 border-b border-border/50 pb-6">
+              <div className="p-4 bg-accent rounded-2xl text-accent-foreground shadow-lg shadow-accent/30">
+                <Activity className="h-7 w-7" />
               </div>
-              <h2 className="text-xl font-bold">نمط الاستثمار</h2>
+              <div>
+                <h2 className="text-2xl font-display font-bold">الأسلوب</h2>
+                <p className="text-muted-foreground font-medium mt-1">نمط الاستثمار وشهية المخاطرة</p>
+              </div>
             </div>
             
             <FormField control={form.control} name="riskCategory" render={({ field }) => (
-              <FormItem className="space-y-4">
-                <FormLabel className="text-base">ما هي شهيتك للمخاطرة؟</FormLabel>
+              <FormItem className="space-y-6">
                 <FormControl>
                   <RadioGroup
                     onValueChange={field.onChange}
                     value={field.value}
-                    className="grid sm:grid-cols-3 gap-4"
+                    className="grid sm:grid-cols-3 gap-6"
                   >
                     <FormItem>
                       <FormControl>
                         <RadioGroupItem value="conservative" className="peer sr-only" />
                       </FormControl>
-                      <FormLabel className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-transparent p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 cursor-pointer">
-                        <span className="font-bold mb-1">متحفظ</span>
-                        <span className="text-xs text-muted-foreground text-center">أولوية لحفظ رأس المال مع نمو بسيط</span>
+                      <FormLabel className="flex flex-col items-center justify-center rounded-3xl border-2 border-border/50 bg-background/50 p-8 hover:bg-muted peer-data-[state=checked]:border-accent peer-data-[state=checked]:bg-accent/5 cursor-pointer transition-all hover:scale-[1.02]">
+                        <span className="font-display font-bold text-xl mb-3">متحفظ</span>
+                        <span className="text-sm text-muted-foreground text-center font-medium leading-relaxed">التركيز على حفظ رأس المال مع نمو آمن ومستقر</span>
                       </FormLabel>
                     </FormItem>
                     
@@ -271,9 +268,9 @@ export default function Onboarding() {
                       <FormControl>
                         <RadioGroupItem value="balanced" className="peer sr-only" />
                       </FormControl>
-                      <FormLabel className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-transparent p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 cursor-pointer">
-                        <span className="font-bold mb-1">متوازن</span>
-                        <span className="text-xs text-muted-foreground text-center">موازنة بين النمو والمخاطر</span>
+                      <FormLabel className="flex flex-col items-center justify-center rounded-3xl border-2 border-border/50 bg-background/50 p-8 hover:bg-muted peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 cursor-pointer transition-all hover:scale-[1.02]">
+                        <span className="font-display font-bold text-xl mb-3">متوازن</span>
+                        <span className="text-sm text-muted-foreground text-center font-medium leading-relaxed">مزيج معتدل يوازن بين فرص النمو والمخاطر</span>
                       </FormLabel>
                     </FormItem>
                     
@@ -281,9 +278,9 @@ export default function Onboarding() {
                       <FormControl>
                         <RadioGroupItem value="growth" className="peer sr-only" />
                       </FormControl>
-                      <FormLabel className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-transparent p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 cursor-pointer">
-                        <span className="font-bold mb-1">نمو عالي</span>
-                        <span className="text-xs text-muted-foreground text-center">مخاطر أعلى لفرص نمو أكبر مستقبلاً</span>
+                      <FormLabel className="flex flex-col items-center justify-center rounded-3xl border-2 border-border/50 bg-background/50 p-8 hover:bg-muted peer-data-[state=checked]:border-secondary peer-data-[state=checked]:bg-secondary/5 cursor-pointer transition-all hover:scale-[1.02]">
+                        <span className="font-display font-bold text-xl mb-3">نمو عالي</span>
+                        <span className="text-sm text-muted-foreground text-center font-medium leading-relaxed">مخاطر أعلى من أجل تعظيم فرص النمو المستقبلية</span>
                       </FormLabel>
                     </FormItem>
                   </RadioGroup>
@@ -293,15 +290,14 @@ export default function Onboarding() {
             )} />
           </Card>
 
-          <div className="flex justify-end pt-4">
+          <div className="flex justify-center md:justify-end pt-8">
             <Button 
               type="submit" 
-              size="lg" 
-              className="rounded-xl px-12 h-14 text-lg w-full sm:w-auto"
+              className="rounded-full px-12 h-16 text-xl font-bold w-full md:w-auto shadow-xl shadow-primary/20 hover:shadow-primary/40 hover:scale-105 transition-all"
               disabled={updateProfileMutation.isPending}
-              data-testid="button-submit-onboarding"
             >
-              {updateProfileMutation.isPending ? 'جاري الحفظ...' : 'حفظ ومتابعة'}
+              {updateProfileMutation.isPending ? 'جاري الحفظ...' : 'ابدأ رحلتك'}
+              {!updateProfileMutation.isPending && <ArrowRight className="mr-3 h-6 w-6 rtl:rotate-180" />}
             </Button>
           </div>
         </form>

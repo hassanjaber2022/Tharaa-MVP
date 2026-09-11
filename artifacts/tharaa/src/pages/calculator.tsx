@@ -1,45 +1,43 @@
-import { useState, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import {
-  useGetProfile,
-  useProjectCalculator,
+import { 
+  useGetProfile, 
+  useProjectCalculator, 
   useCreatePlan,
-  getListPlansQueryKey,
-  getGetDashboardQueryKey,
-  CalculatorResult,
-  PlanInputScenario,
+  getListPlansQueryKey
 } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { useToast } from '@/hooks/use-toast';
+import { Card } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
-import { Calculator as CalcIcon, LineChart, Save, RefreshCw } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { Calculator as CalcIcon, LineChart, Target, Save, ArrowLeft, Loader2, Link } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
-import { 
-  LineChart as RechartsLineChart, 
-  Line, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
+import {
+  LineChart as RechartsLineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
   ResponsiveContainer,
   Legend
 } from 'recharts';
 
-const calcSchema = z.object({
+const calculatorSchema = z.object({
   currentAge: z.coerce.number().min(18).max(99),
   targetAge: z.coerce.number().min(19).max(100),
   initialBalance: z.coerce.number().min(0),
@@ -51,373 +49,362 @@ const calcSchema = z.object({
   withdrawalRate: z.coerce.number().min(0).max(20),
 });
 
-type CalcFormValues = z.infer<typeof calcSchema>;
+type CalculatorFormValues = z.infer<typeof calculatorSchema>;
 
 export default function Calculator() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [result, setResult] = useState<CalculatorResult | null>(null);
-  const [selectedScenario, setSelectedScenario] = useState<PlanInputScenario>('balanced');
-  const [planTitle, setPlanTitle] = useState('');
-
+  
   const { data: profile } = useGetProfile();
-
-  const form = useForm<CalcFormValues>({
-    resolver: zodResolver(calcSchema),
+  
+  const form = useForm<CalculatorFormValues>({
+    resolver: zodResolver(calculatorSchema),
     defaultValues: {
       currentAge: 25,
       targetAge: 55,
-      initialBalance: 1500,
-      monthlyContribution: 400,
+      initialBalance: 0,
+      monthlyContribution: 200,
       matchedContribution: 0,
-      annualStepUp: 0,
+      annualStepUp: 2,
       annualFee: 0.5,
       inflationRate: 2.5,
-      withdrawalRate: 4.0,
+      withdrawalRate: 4,
     },
   });
 
+  const initialized = useRef(false);
   useEffect(() => {
-    if (profile) {
+    if (profile && !initialized.current) {
       form.reset({
         currentAge: profile.currentAge,
         targetAge: profile.targetAge,
         initialBalance: profile.currentSavings,
         monthlyContribution: profile.monthlyCapacity,
         matchedContribution: 0,
-        annualStepUp: 0,
+        annualStepUp: 2,
         annualFee: 0.5,
         inflationRate: 2.5,
-        withdrawalRate: 4.0,
+        withdrawalRate: 4,
       });
-      // Optionally auto-calculate on load if profile exists
+      initialized.current = true;
     }
   }, [profile, form]);
 
-  const calcMutation = useProjectCalculator({
-    mutation: {
-      onSuccess: (data) => {
-        setResult(data);
-      },
-      onError: () => {
-        toast({
-          variant: 'destructive',
-          title: 'خطأ',
-          description: 'تعذر إجراء الحسابات، تحقق من المدخلات.',
-        });
-      },
-    },
+  const [activeScenario, setActiveScenario] = useState<'conservative' | 'balanced' | 'growth'>('balanced');
+  
+  // Real-time calculation
+  const formValues = form.watch();
+  
+  const { data: result, isPending: isCalculating } = useProjectCalculator({
+    mutation: { mutationKey: ['projectCalculator', JSON.stringify(formValues)] }
   });
 
-  const savePlanMutation = useCreatePlan({
+  // Auto-calculate on changes with a slight debounce
+  const calculateRef = useRef<any>(null);
+  const projectMutation = useProjectCalculator({});
+  
+  useEffect(() => {
+    if (calculateRef.current) clearTimeout(calculateRef.current);
+    calculateRef.current = setTimeout(() => {
+      // Basic validation check before calling
+      if (formValues.targetAge > formValues.currentAge) {
+        projectMutation.mutate({ data: formValues });
+      }
+    }, 500);
+    return () => clearTimeout(calculateRef.current);
+  }, [JSON.stringify(formValues)]);
+
+  const calcData = projectMutation.data;
+
+  const createPlanMutation = useCreatePlan({
     mutation: {
       onSuccess: (data) => {
         queryClient.invalidateQueries({ queryKey: getListPlansQueryKey() });
-        queryClient.invalidateQueries({ queryKey: getGetDashboardQueryKey() });
         toast({
           title: 'تم حفظ الخطة بنجاح',
           description: 'يمكنك مراجعتها من لوحة التحكم',
         });
         setLocation(`/plans/${data.id}`);
       },
-      onError: (err: any) => {
+      onError: (error: any) => {
         toast({
           variant: 'destructive',
           title: 'فشل حفظ الخطة',
-          description: err.response?.data?.error || 'حاول مرة أخرى',
+          description: error.response?.data?.error || 'حاول مرة أخرى',
         });
-      },
-    },
+      }
+    }
   });
 
-  const onSubmit = (data: CalcFormValues) => {
-    calcMutation.mutate({ data });
-  };
-
   const handleSavePlan = () => {
-    if (!result) return;
-    const data = form.getValues();
-    savePlanMutation.mutate({
+    createPlanMutation.mutate({
       data: {
-        ...data,
-        scenario: selectedScenario,
+        ...formValues,
+        scenario: activeScenario,
         emergencyMonths: profile?.emergencyMonths || 6,
-        title: planTitle || 'خطة التقاعد الأساسية',
-      },
+        title: `خطة التقاعد عند ${formValues.targetAge}`,
+      }
     });
   };
 
-  // Prepare chart data
-  const chartData = result?.scenarios[0].yearlyValues.map((yv, index) => {
-    const dataPoint: any = { year: yv.year };
-    result.scenarios.forEach(sc => {
-      dataPoint[sc.key] = sc.yearlyValues[index].value;
-    });
-    return dataPoint;
-  }) || [];
+  const selectedProjection = calcData?.scenarios.find(s => s.key === activeScenario);
 
   return (
-    <div className="container max-w-7xl mx-auto py-8 px-4 pb-24">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2 flex items-center gap-2">
-          <CalcIcon className="h-8 w-8 text-primary" />
-          الحاسبة الاستثمارية
+    <div className="container max-w-screen-xl mx-auto py-12 px-4 pb-32">
+      <div className="mb-10 text-center md:text-start flex flex-col items-center md:items-start">
+        <div className="h-16 w-16 rounded-3xl bg-primary/10 text-primary flex items-center justify-center mb-6">
+          <CalcIcon className="h-8 w-8" />
+        </div>
+        <h1 className="text-4xl md:text-5xl font-display font-bold tracking-tight mb-4 text-foreground">
+          الحاسبة الذكية
         </h1>
-        <p className="text-muted-foreground text-lg">
-          اكتشف كيف ينمو رأس مالك بمرور الوقت عبر مسارات استثمارية مختلفة.
+        <p className="text-muted-foreground text-lg md:text-xl max-w-2xl font-medium leading-relaxed">
+          استكشف كيف تنمو ثروتك بمرور الزمن. غيّر المتغيرات ولاحظ التأثير المستقبلي.
         </p>
       </div>
 
       <div className="grid lg:grid-cols-12 gap-8">
-        {/* Inputs Column */}
-        <div className="lg:col-span-4">
-          <Card className="p-6 rounded-3xl border-border/50 shadow-sm sticky top-24">
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        
+        {/* Controls Column */}
+        <div className="lg:col-span-4 space-y-6">
+          <Form {...form}>
+            <form className="space-y-6">
+              
+              <Card className="glass-card p-6 rounded-[2rem]">
+                <h3 className="text-xl font-display font-bold mb-6 flex items-center gap-2">
+                  <Target className="h-5 w-5 text-primary" />
+                  الأساسيات
+                </h3>
                 
-                <div className="space-y-4">
-                  <h3 className="font-bold border-b border-border pb-2">البيانات الأساسية</h3>
+                <div className="space-y-6">
+                  <FormField control={form.control} name="currentAge" render={({ field }) => (
+                    <FormItem>
+                      <div className="flex justify-between items-center mb-2">
+                        <FormLabel className="text-base font-bold">العمر الحالي</FormLabel>
+                        <span className="text-sm font-bold text-primary bg-primary/10 px-3 py-1 rounded-lg">{field.value} سنة</span>
+                      </div>
+                      <FormControl>
+                        <Slider 
+                          min={18} max={80} step={1} 
+                          value={[field.value]} 
+                          onValueChange={(vals) => field.onChange(vals[0])}
+                          className="my-4"
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )} />
                   
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField control={form.control} name="currentAge" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>العمر الحالي</FormLabel>
-                        <FormControl><Input type="number" inputMode="numeric" {...field} /></FormControl>
-                      </FormItem>
-                    )} />
-                    <FormField control={form.control} name="targetAge" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>عمر التقاعد</FormLabel>
-                        <FormControl><Input type="number" inputMode="numeric" {...field} /></FormControl>
-                      </FormItem>
-                    )} />
-                  </div>
+                  <FormField control={form.control} name="targetAge" render={({ field }) => (
+                    <FormItem>
+                      <div className="flex justify-between items-center mb-2">
+                        <FormLabel className="text-base font-bold">عمر التقاعد</FormLabel>
+                        <span className="text-sm font-bold text-primary bg-primary/10 px-3 py-1 rounded-lg">{field.value} سنة</span>
+                      </div>
+                      <FormControl>
+                        <Slider 
+                          min={field.value < formValues.currentAge ? formValues.currentAge + 1 : 25} max={100} step={1} 
+                          value={[field.value]} 
+                          onValueChange={(vals) => field.onChange(vals[0])}
+                          className="my-4"
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )} />
 
                   <FormField control={form.control} name="initialBalance" render={({ field }) => (
                     <FormItem>
-                      <FormLabel>الرصيد الابتدائي (د.ك)</FormLabel>
-                      <FormControl><Input type="number" inputMode="numeric" {...field} /></FormControl>
+                      <FormLabel className="text-base font-bold">الرصيد المبدئي (د.ك)</FormLabel>
+                      <FormControl>
+                        <Input type="number" className="h-12 rounded-xl text-lg bg-background/50 border-border/50 focus:border-primary" {...field} />
+                      </FormControl>
                     </FormItem>
                   )} />
 
                   <FormField control={form.control} name="monthlyContribution" render={({ field }) => (
                     <FormItem>
-                      <FormLabel>المساهمة الشهرية (د.ك)</FormLabel>
-                      <FormControl><Input type="number" inputMode="numeric" {...field} /></FormControl>
-                    </FormItem>
-                  )} />
-                </div>
-
-                <div className="space-y-4 pt-2">
-                  <h3 className="font-bold border-b border-border pb-2">إعدادات متقدمة</h3>
-                  
-                  <FormField control={form.control} name="annualStepUp" render={({ field }) => (
-                    <FormItem>
-                      <div className="flex justify-between">
-                        <FormLabel>الزيادة السنوية للمساهمة</FormLabel>
-                        <span className="text-sm font-bold text-primary">{field.value}%</span>
-                      </div>
+                      <FormLabel className="text-base font-bold text-primary">المساهمة الشهرية (د.ك)</FormLabel>
                       <FormControl>
-                        <Slider 
-                          min={0} max={20} step={1} 
-                          value={[field.value]} 
-                          onValueChange={(vals) => field.onChange(vals[0])}
-                          className="py-2"
-                        />
+                        <Input type="number" className="h-12 rounded-xl text-lg bg-primary/5 border-primary/20 focus:border-primary" {...field} />
                       </FormControl>
                     </FormItem>
                   )} />
+                </div>
+              </Card>
 
+              <Card className="glass-card p-6 rounded-[2rem]">
+                <h3 className="text-xl font-display font-bold mb-6 text-foreground">افتراضات متقدمة</h3>
+                
+                <div className="space-y-6">
                   <FormField control={form.control} name="inflationRate" render={({ field }) => (
                     <FormItem>
-                      <div className="flex justify-between">
-                        <FormLabel>معدل التضخم المتوقع</FormLabel>
-                        <span className="text-sm font-bold text-primary">{field.value}%</span>
+                      <div className="flex justify-between items-center mb-2">
+                        <FormLabel className="text-sm font-bold">التضخم السنوي</FormLabel>
+                        <span className="text-sm text-muted-foreground">{field.value}%</span>
                       </div>
                       <FormControl>
-                        <Slider 
-                          min={0} max={10} step={0.5} 
-                          value={[field.value]} 
-                          onValueChange={(vals) => field.onChange(vals[0])}
-                          className="py-2"
-                        />
+                        <Slider min={0} max={10} step={0.5} value={[field.value]} onValueChange={(v) => field.onChange(v[0])} />
                       </FormControl>
                     </FormItem>
                   )} />
                   
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField control={form.control} name="annualFee" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>رسوم الإدارة %</FormLabel>
-                        <FormControl><Input type="number" inputMode="numeric" step="0.1" {...field} /></FormControl>
-                      </FormItem>
-                    )} />
-                    <FormField control={form.control} name="withdrawalRate" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>معدل السحب %</FormLabel>
-                        <FormControl><Input type="number" inputMode="numeric" step="0.1" {...field} /></FormControl>
-                      </FormItem>
-                    )} />
-                  </div>
+                  <FormField control={form.control} name="withdrawalRate" render={({ field }) => (
+                    <FormItem>
+                      <div className="flex justify-between items-center mb-2">
+                        <FormLabel className="text-sm font-bold">معدل السحب الآمن</FormLabel>
+                        <span className="text-sm text-muted-foreground">{field.value}%</span>
+                      </div>
+                      <FormControl>
+                        <Slider min={2} max={8} step={0.5} value={[field.value]} onValueChange={(v) => field.onChange(v[0])} />
+                      </FormControl>
+                    </FormItem>
+                  )} />
                 </div>
+              </Card>
 
-                <Button 
-                  type="submit" 
-                  className="w-full h-12 rounded-xl text-md"
-                  disabled={calcMutation.isPending}
-                  data-testid="button-calculate"
-                >
-                  {calcMutation.isPending ? (
-                    <RefreshCw className="me-2 h-5 w-5 animate-spin" />
-                  ) : (
-                    <LineChart className="me-2 h-5 w-5" />
-                  )}
-                  احسب النتائج
-                </Button>
-              </form>
-            </Form>
-          </Card>
+            </form>
+          </Form>
         </div>
 
         {/* Results Column */}
-        <div className="lg:col-span-8">
-          {!result ? (
-            <Card className="h-full min-h-[400px] flex items-center justify-center border-dashed border-2 rounded-3xl bg-muted/20">
-              <div className="text-center text-muted-foreground p-8">
-                <CalcIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <h3 className="text-xl font-bold mb-2">في انتظار إدخال البيانات</h3>
-                <p>أدخل بياناتك في القائمة الجانبية واضغط على "احسب النتائج" لرؤية التوقعات</p>
+        <div className="lg:col-span-8 flex flex-col gap-6">
+          <Card className="glass-card flex-1 p-6 md:p-8 rounded-[2rem] border-primary/10 overflow-hidden flex flex-col">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
+              <div>
+                <h2 className="text-2xl font-display font-bold mb-1">النمو المتوقع</h2>
+                <p className="text-muted-foreground font-medium text-sm">التأثير المركب لمدخراتك حتى عمر {formValues.targetAge}</p>
               </div>
-            </Card>
-          ) : (
-            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              {/* Chart */}
-              <Card className="p-6 rounded-3xl border-border/50 shadow-sm">
-                <h3 className="text-xl font-bold mb-6">نمو الثروة المتوقع عبر الزمن</h3>
-                <div className="h-[400px] w-full" dir="ltr">
+
+              {/* Scenario Toggles */}
+              <div className="flex bg-muted/50 p-1.5 rounded-2xl border border-border/50 self-stretch md:self-auto">
+                <Button 
+                  variant={activeScenario === 'conservative' ? 'default' : 'ghost'} 
+                  size="sm" 
+                  onClick={() => setActiveScenario('conservative')}
+                  className={`rounded-xl font-bold ${activeScenario === 'conservative' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                >
+                  متحفظ
+                </Button>
+                <Button 
+                  variant={activeScenario === 'balanced' ? 'default' : 'ghost'} 
+                  size="sm" 
+                  onClick={() => setActiveScenario('balanced')}
+                  className={`rounded-xl font-bold ${activeScenario === 'balanced' ? 'bg-primary text-white shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                >
+                  متوازن
+                </Button>
+                <Button 
+                  variant={activeScenario === 'growth' ? 'default' : 'ghost'} 
+                  size="sm" 
+                  onClick={() => setActiveScenario('growth')}
+                  className={`rounded-xl font-bold ${activeScenario === 'growth' ? 'bg-secondary text-secondary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                >
+                  نمو عالي
+                </Button>
+              </div>
+            </div>
+
+            {!calcData ? (
+              <div className="flex-1 min-h-[300px] flex items-center justify-center">
+                <Loader2 className="h-8 w-8 text-primary animate-spin" />
+              </div>
+            ) : selectedProjection ? (
+              <>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                  <div className="bg-background/60 p-4 rounded-2xl border border-border/50">
+                    <p className="text-xs font-bold text-muted-foreground mb-1">الرصيد النهائي</p>
+                    <p className="text-xl font-display font-bold text-foreground">{formatCurrency(selectedProjection.nominalValue)}</p>
+                  </div>
+                  <div className="bg-background/60 p-4 rounded-2xl border border-border/50">
+                    <p className="text-xs font-bold text-muted-foreground mb-1">القوة الشرائية الحقيقية</p>
+                    <p className="text-xl font-display font-bold text-foreground">{formatCurrency(selectedProjection.realValue)}</p>
+                  </div>
+                  <div className="bg-primary/5 p-4 rounded-2xl border border-primary/20">
+                    <p className="text-xs font-bold text-muted-foreground mb-1">دخل التقاعد الشهري</p>
+                    <p className="text-xl font-display font-bold text-primary">{formatCurrency(selectedProjection.monthlyIncome)}</p>
+                  </div>
+                  <div className="bg-background/60 p-4 rounded-2xl border border-border/50">
+                    <p className="text-xs font-bold text-muted-foreground mb-1">العائد المتوقع</p>
+                    <p className="text-xl font-display font-bold text-foreground">{selectedProjection.annualRate}%</p>
+                  </div>
+                </div>
+
+                <div className="flex-1 min-h-[350px] w-full" dir="ltr">
                   <ResponsiveContainer width="100%" height="100%">
-                    <RechartsLineChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                    <RechartsLineChart
+                      data={selectedProjection.yearlyValues}
+                      margin={{ top: 10, right: 10, left: 10, bottom: 0 }}
+                    >
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
                       <XAxis 
                         dataKey="year" 
-                        tick={{ fill: 'hsl(var(--muted-foreground))' }} 
-                        axisLine={false} 
-                        tickLine={false} 
+                        stroke="hsl(var(--muted-foreground))"
+                        fontSize={12}
+                        tickLine={false}
+                        axisLine={false}
+                        tickMargin={10}
                       />
                       <YAxis 
-                        tickFormatter={(value) => value >= 1000000 ? `${(value / 1000000).toFixed(1)} مليون` : value >= 1000 ? `${(value / 1000).toFixed(0)} ألف` : String(value)}
-                        tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                        axisLine={false} 
+                        stroke="hsl(var(--muted-foreground))"
+                        fontSize={12}
                         tickLine={false}
-                        width={80}
+                        axisLine={false}
+                        tickFormatter={(val) => `${(val / 1000).toFixed(0)}k`}
+                        width={60}
                       />
                       <Tooltip 
-                        formatter={(value: number, name: string) => {
-                          const label = result.scenarios.find(s => s.key === name)?.label || name;
-                          return [formatCurrency(value), label];
-                        }}
-                        labelFormatter={(label) => `عمر: ${label}`}
+                        formatter={(value: number) => [formatCurrency(value), 'القيمة']}
+                        labelFormatter={(label) => `عمر ${label}`}
                         contentStyle={{ 
-                          backgroundColor: 'hsl(var(--background))', 
-                          borderRadius: '12px', 
-                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '16px', 
+                          border: 'none', 
+                          boxShadow: '0 10px 40px -10px rgba(0,0,0,0.1)',
+                          backgroundColor: 'hsl(var(--card))',
+                          color: 'hsl(var(--foreground))',
+                          fontFamily: 'inherit',
+                          fontWeight: 'bold',
                           direction: 'rtl'
                         }}
                       />
-                      <Legend 
-                        formatter={(value) => result.scenarios.find(s => s.key === value)?.label || value}
-                        wrapperStyle={{ paddingTop: '20px', direction: 'rtl' }}
+                      <Line 
+                        type="monotone" 
+                        dataKey="value" 
+                        stroke={
+                          activeScenario === 'conservative' ? 'hsl(var(--foreground))' :
+                          activeScenario === 'balanced' ? 'hsl(var(--primary))' :
+                          'hsl(var(--secondary))'
+                        } 
+                        strokeWidth={4}
+                        dot={false}
+                        activeDot={{ r: 8, strokeWidth: 0 }}
                       />
-                      <Line type="monotone" dataKey="growth" stroke="hsl(var(--primary))" strokeWidth={3} dot={false} activeDot={{ r: 6 }} />
-                      <Line type="monotone" dataKey="balanced" stroke="hsl(var(--secondary))" strokeWidth={3} dot={false} activeDot={{ r: 6 }} />
-                      <Line type="monotone" dataKey="conservative" stroke="hsl(var(--chart-3))" strokeWidth={3} dot={false} activeDot={{ r: 6 }} />
                     </RechartsLineChart>
                   </ResponsiveContainer>
                 </div>
-              </Card>
+              </>
+            ) : null}
+          </Card>
 
-              {/* Scenarios Cards */}
-              <div className="grid md:grid-cols-3 gap-4">
-                {result.scenarios.map((scenario) => {
-                  const isSelected = selectedScenario === scenario.key;
-                  let colorClass = 'border-chart-3 bg-chart-3/5';
-                  if (scenario.key === 'growth') colorClass = 'border-primary bg-primary/5';
-                  if (scenario.key === 'balanced') colorClass = 'border-secondary bg-secondary/5';
-
-                  return (
-                    <Card 
-                      key={scenario.key}
-                      role="button"
-                      tabIndex={0}
-                      aria-pressed={isSelected}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') setSelectedScenario(scenario.key);
-                      }}
-                      data-testid={`card-scenario-${scenario.key}`}
-                      className={`p-5 rounded-3xl cursor-pointer transition-all border-2 ${
-                        isSelected ? colorClass : 'border-transparent hover:border-border'
-                      }`}
-                      onClick={() => setSelectedScenario(scenario.key)}
-                    >
-                      <div className="flex justify-between items-start mb-4">
-                        <h4 className="font-bold text-lg">{scenario.label}</h4>
-                        <span className={`text-sm font-bold px-2 py-1 rounded-md ${
-                          scenario.key === 'growth' ? 'bg-primary/10 text-primary' : 
-                          scenario.key === 'balanced' ? 'bg-secondary/10 text-secondary' : 
-                          'bg-chart-3/10 text-chart-3'
-                        }`}>
-                          {scenario.annualRate}%
-                        </span>
-                      </div>
-                      
-                      <div className="space-y-3">
-                        <div>
-                          <p className="text-xs text-muted-foreground mb-1">إجمالي المتوقع</p>
-                          <p className="font-bold text-lg">{formatCurrency(scenario.nominalValue)}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground mb-1">القوة الشرائية الحقيقية</p>
-                          <p className="font-bold text-md text-emerald-600">{formatCurrency(scenario.realValue)}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground mb-1">الدخل الشهري المتوقع</p>
-                          <p className="font-bold text-md">{formatCurrency(scenario.monthlyIncome)}</p>
-                        </div>
-                      </div>
-                    </Card>
-                  );
-                })}
-              </div>
-
-              {/* Save Plan Action */}
-              <Card className="p-6 rounded-3xl border-border/50 bg-muted/10 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="flex-1 w-full">
-                  <h4 className="font-bold mb-2">حفظ الخطة المحددة</h4>
-                  <p className="text-sm text-muted-foreground mb-3">اختر السيناريو الأنسب لك من الأعلى واحفظ الخطة لمتابعتها لاحقاً.</p>
-                  <Input 
-                    placeholder="اسم الخطة (مثال: خطة التقاعد المبكر)" 
-                    value={planTitle}
-                    onChange={(e) => setPlanTitle(e.target.value)}
-                    className="max-w-sm bg-background"
-                  />
-                </div>
-                <Button 
-                  onClick={handleSavePlan}
-                  size="lg"
-                  className="rounded-xl shrink-0 w-full sm:w-auto h-12"
-                  disabled={savePlanMutation.isPending}
-                  data-testid="button-save-plan"
-                >
-                  <Save className="me-2 h-5 w-5" />
-                  {savePlanMutation.isPending ? 'جاري الحفظ...' : 'حفظ الخطة'}
-                </Button>
-              </Card>
-              
-              <div className="text-xs text-muted-foreground text-center bg-card p-4 rounded-xl border border-border/50">
-                {result.disclosure}
-              </div>
-            </div>
+          <div className="flex justify-end gap-4 mt-auto">
+            <Link href="/dashboard">
+              <Button variant="ghost" className="h-14 px-8 rounded-full font-bold">
+                إلغاء
+              </Button>
+            </Link>
+            <Button 
+              onClick={handleSavePlan}
+              disabled={!calcData || createPlanMutation.isPending}
+              className="h-14 px-10 rounded-full font-bold shadow-xl shadow-primary/20 hover:shadow-primary/40 hover:-translate-y-1 transition-all text-lg"
+            >
+              {createPlanMutation.isPending ? 'جاري الحفظ...' : 'حفظ كخطة نشطة'}
+              {!createPlanMutation.isPending && <Save className="mr-2 h-5 w-5" />}
+            </Button>
+          </div>
+          
+          {calcData?.disclosure && (
+            <p className="text-xs text-muted-foreground/60 text-center leading-relaxed">
+              {calcData.disclosure} هذه الأرقام هي مجرد أمثلة توضيحية ولا تشكل نصيحة استثمارية.
+            </p>
           )}
         </div>
       </div>

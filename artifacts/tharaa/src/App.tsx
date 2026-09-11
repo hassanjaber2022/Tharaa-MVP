@@ -13,6 +13,7 @@ import Dashboard from '@/pages/dashboard';
 import Calculator from '@/pages/calculator';
 import PlanDetail from '@/pages/plan-detail';
 import Plans from '@/pages/plans';
+import Settings from '@/pages/settings';
 import {
   Route,
   Switch,
@@ -35,6 +36,7 @@ function Router() {
           <Route path="/calculator" component={Calculator} />
           <Route path="/plans" component={Plans} />
           <Route path="/plans/:id" component={PlanDetail} />
+          <Route path="/settings" component={Settings} />
           <Route component={NotFound} />
         </Switch>
       </RoutedErrorBoundary>
