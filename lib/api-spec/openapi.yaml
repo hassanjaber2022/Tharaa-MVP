@@ -3,13 +3,23 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Tharaa financial planning MVP API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Session-based authentication
+  - name: profile
+    description: User financial profile
+  - name: calculator
+    description: Illustrative future projections
+  - name: plans
+    description: Saved financial plans
+  - name: dashboard
+    description: Customer dashboard summary
 paths:
   /healthz:
     get:
@@ -24,7 +34,237 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /auth/register:
+    post:
+      operationId: register
+      tags: [auth]
+      summary: Create a customer account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterInput"
+      responses:
+        "201":
+          description: Account created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthUser"
+        "409":
+          description: Email already registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Start a customer session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginInput"
+      responses:
+        "200":
+          description: Authenticated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthUser"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: End the current session
+      responses:
+        "204":
+          description: Session ended
+  /auth/me:
+    get:
+      operationId: getCurrentUser
+      tags: [auth]
+      summary: Get the current session user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthUser"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /profile:
+    get:
+      operationId: getProfile
+      tags: [profile]
+      summary: Get the current user's financial profile
+      responses:
+        "200":
+          description: Financial profile, or null before onboarding
+          content:
+            application/json:
+              schema:
+                type: ["object", "null"]
+                $ref: "#/components/schemas/FinancialProfile"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    put:
+      operationId: updateProfile
+      tags: [profile]
+      summary: Save the current user's onboarding profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FinancialProfileInput"
+      responses:
+        "200":
+          description: Saved financial profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FinancialProfile"
+        "400":
+          description: Invalid profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /calculator/project:
+    post:
+      operationId: projectCalculator
+      tags: [calculator]
+      summary: Project three illustrative financial scenarios
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CalculatorInput"
+      responses:
+        "200":
+          description: Projection results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CalculatorResult"
+        "400":
+          description: Invalid calculator inputs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /plans:
+    get:
+      operationId: listPlans
+      tags: [plans]
+      summary: List the current user's saved plans
+      responses:
+        "200":
+          description: Saved plans
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Plan"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      operationId: createPlan
+      tags: [plans]
+      summary: Save a calculator plan
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlanInput"
+      responses:
+        "201":
+          description: Saved plan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Plan"
+        "400":
+          description: Invalid plan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /plans/{id}:
+    get:
+      operationId: getPlan
+      tags: [plans]
+      summary: Get one of the current user's saved plans
+      parameters:
+        - $ref: "#/components/parameters/PlanId"
+      responses:
+        "200":
+          description: Saved plan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Plan"
+        "404":
+          description: Plan not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /dashboard:
+    get:
+      operationId: getDashboard
+      tags: [dashboard]
+      summary: Get the current user's dashboard summary
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
+  parameters:
+    PlanId:
+      name: id
+      in: path
+      required: true
+      description: Saved plan id
+      schema:
+        type: string
+        minLength: 1
   schemas:
     HealthStatus:
       type: object
@@ -33,4 +273,210 @@ components:
           type: string
       required:
         - status
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
+    AuthUser:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum: [customer, contributor, advisor, compliance, admin]
+        emailVerified:
+          type: boolean
+      required: [id, name, email, role, emailVerified]
+    RegisterInput:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 80
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+          maxLength: 128
+      required: [name, email, password]
+    LoginInput:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 1
+      required: [email, password]
+    FinancialProfileInput:
+      type: object
+      properties:
+        monthlyIncome: { type: number, minimum: 0 }
+        essentialExpenses: { type: number, minimum: 0 }
+        obligations: { type: number, minimum: 0 }
+        currentSavings: { type: number, minimum: 0 }
+        monthlyCapacity: { type: number, minimum: 0 }
+        targetAge: { type: integer, minimum: 19, maximum: 100 }
+        desiredFutureIncome: { type: number, minimum: 0 }
+        emergencyMonths: { type: integer, minimum: 1, maximum: 24 }
+        currentAge: { type: integer, minimum: 18, maximum: 99 }
+        riskCategory:
+          type: string
+          enum: [conservative, balanced, growth]
+      required:
+        - monthlyIncome
+        - essentialExpenses
+        - obligations
+        - currentSavings
+        - monthlyCapacity
+        - targetAge
+        - desiredFutureIncome
+        - emergencyMonths
+        - currentAge
+        - riskCategory
+    FinancialProfile:
+      allOf:
+        - $ref: "#/components/schemas/FinancialProfileInput"
+        - type: object
+          properties:
+            id: { type: string }
+            userId: { type: string }
+            suitabilityScore: { type: number, minimum: 0, maximum: 100 }
+            updatedAt: { type: string, format: date-time }
+          required: [id, userId, suitabilityScore, updatedAt]
+    CalculatorInput:
+      type: object
+      properties:
+        currentAge: { type: integer, minimum: 18, maximum: 99 }
+        targetAge: { type: integer, minimum: 19, maximum: 100 }
+        initialBalance: { type: number, minimum: 0 }
+        monthlyContribution: { type: number, minimum: 0 }
+        matchedContribution: { type: number, minimum: 0 }
+        annualStepUp: { type: number, minimum: 0, maximum: 100 }
+        annualFee: { type: number, minimum: 0, maximum: 20 }
+        inflationRate: { type: number, minimum: 0, maximum: 30 }
+        withdrawalRate: { type: number, minimum: 0, maximum: 20 }
+      required:
+        - currentAge
+        - targetAge
+        - initialBalance
+        - monthlyContribution
+        - matchedContribution
+        - annualStepUp
+        - annualFee
+        - inflationRate
+        - withdrawalRate
+    ScenarioProjection:
+      type: object
+      properties:
+        key: { type: string, enum: [conservative, balanced, growth] }
+        label: { type: string }
+        annualRate: { type: number }
+        totalContributions: { type: number }
+        illustrativeGrowth: { type: number }
+        nominalValue: { type: number }
+        realValue: { type: number }
+        monthlyIncome: { type: number }
+        yearlyValues:
+          type: array
+          items:
+            type: object
+            properties:
+              year: { type: integer }
+              value: { type: number }
+            required: [year, value]
+      required:
+        - key
+        - label
+        - annualRate
+        - totalContributions
+        - illustrativeGrowth
+        - nominalValue
+        - realValue
+        - monthlyIncome
+        - yearlyValues
+    CalculatorResult:
+      type: object
+      properties:
+        years: { type: integer }
+        scenarios:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScenarioProjection"
+        disclosure:
+          type: string
+      required: [years, scenarios, disclosure]
+    PlanInput:
+      allOf:
+        - $ref: "#/components/schemas/CalculatorInput"
+        - type: object
+          properties:
+            scenario:
+              type: string
+              enum: [conservative, balanced, growth]
+            emergencyMonths:
+              type: integer
+              minimum: 1
+              maximum: 24
+            title:
+              type: string
+              maxLength: 80
+          required: [scenario, emergencyMonths]
+    Plan:
+      allOf:
+        - $ref: "#/components/schemas/PlanInput"
+        - type: object
+          properties:
+            id: { type: string }
+            userId: { type: string }
+            emergencyTarget: { type: number }
+            estimatedValue: { type: number }
+            estimatedRealValue: { type: number }
+            estimatedMonthlyIncome: { type: number }
+            status:
+              type: string
+              enum: [active, paused, archived]
+            createdAt: { type: string, format: date-time }
+            updatedAt: { type: string, format: date-time }
+          required:
+            - id
+            - userId
+            - emergencyTarget
+            - estimatedValue
+            - estimatedRealValue
+            - estimatedMonthlyIncome
+            - status
+            - createdAt
+            - updatedAt
+    DashboardSummary:
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/AuthUser"
+        profileComplete: { type: boolean }
+        activePlan:
+          type: ["object", "null"]
+          $ref: "#/components/schemas/Plan"
+        emergencyProgress: { type: number, minimum: 0, maximum: 100 }
+        planCount: { type: integer, minimum: 0 }
+        recommendation: { type: string }
+      required:
+        - user
+        - profileComplete
+        - activePlan
+        - emergencyProgress
+        - planCount
+        - recommendation
 
