@@ -32,6 +32,31 @@ export function getMongoUri(): string {
     );
   }
 
+  const mongoPassword = process.env.MONGODB_PASSWORD;
+  if (mongoPassword) {
+    const schemeEnd = mongoUri.indexOf("://") + 3;
+    const relativeAuthorityEnd = mongoUri.slice(schemeEnd).search(/[/?#]/);
+    const effectiveAuthorityEnd =
+      relativeAuthorityEnd === -1 ? mongoUri.length : schemeEnd + relativeAuthorityEnd;
+    const authority = mongoUri.slice(schemeEnd, effectiveAuthorityEnd);
+    const separatorIndex = authority.lastIndexOf("@");
+    const userInfo = separatorIndex === -1 ? "" : authority.slice(0, separatorIndex);
+    const usernameSeparatorIndex = userInfo.indexOf(":");
+    const username =
+      usernameSeparatorIndex === -1 ? userInfo : userInfo.slice(0, usernameSeparatorIndex);
+
+    if (!username || separatorIndex === -1) {
+      throw new Error("MONGODB_URI must include a database username");
+    }
+
+    const hostAndOptions = mongoUri.slice(schemeEnd + separatorIndex + 1);
+    mongoUri = `${mongoUri.slice(0, schemeEnd)}${username}:${encodeURIComponent(mongoPassword)}@${hostAndOptions}`;
+  }
+
+  if (/[<>]/.test(mongoUri)) {
+    throw new Error("MONGODB_URI still contains an unreplaced placeholder");
+  }
+
   return mongoUri;
 }
 
