@@ -57,6 +57,19 @@ export function getMongoUri(): string {
     throw new Error("MONGODB_URI still contains an unreplaced placeholder");
   }
 
+  const schemeEnd = mongoUri.indexOf("://") + 3;
+  const queryStart = mongoUri.indexOf("?", schemeEnd);
+  const pathStart = mongoUri.indexOf("/", schemeEnd);
+  if (pathStart === -1 || (queryStart !== -1 && pathStart > queryStart)) {
+    const insertAt = queryStart === -1 ? mongoUri.length : queryStart;
+    mongoUri = `${mongoUri.slice(0, insertAt)}/tharaa${mongoUri.slice(insertAt)}`;
+  } else {
+    const pathEnd = queryStart === -1 ? mongoUri.length : queryStart;
+    if (mongoUri.slice(pathStart, pathEnd) === "/") {
+      mongoUri = `${mongoUri.slice(0, pathStart)}/tharaa${mongoUri.slice(pathEnd)}`;
+    }
+  }
+
   return mongoUri;
 }
 
