@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { arSA } from 'date-fns/locale';
+import { formatCurrency } from '@/lib/utils';
 
 export default function PlanDetail() {
   const [, params] = useRoute('/plans/:id');
@@ -53,19 +54,11 @@ export default function PlanDetail() {
         </div>
         <p className="text-muted-foreground mb-6">قد تكون الخطة غير موجودة أو محذوفة</p>
         <Link href="/dashboard">
-          <Button variant="outline" className="rounded-xl">العودة للرئيسية</Button>
+          <Button variant="outline" className="rounded-xl" data-testid="button-return-home">العودة للرئيسية</Button>
         </Link>
       </div>
     );
   }
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('ar-KW', {
-      style: 'currency',
-      currency: 'KWD',
-      maximumFractionDigits: 2,
-    }).format(amount);
-  };
 
   const getStatusBadge = (status: PlanStatus) => {
     switch (status) {

@@ -45,6 +45,14 @@ export function Navbar() {
               >
                 الحاسبة
               </Link>
+              <Link
+                href="/plans"
+                className={`text-sm font-medium transition-colors hover:text-primary ${
+                  location === '/plans' ? 'text-primary' : 'text-muted-foreground'
+                }`}
+              >
+                خططي
+              </Link>
             </nav>
           )}
         </div>
@@ -122,6 +130,16 @@ export function Navbar() {
             >
               <Calculator className="h-4 w-4" />
               الحاسبة
+            </Link>
+            <Link
+              href="/plans"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`flex items-center gap-2 text-sm font-medium px-2 py-2 rounded-md ${
+                location === '/plans' ? 'bg-primary/10 text-primary' : 'text-muted-foreground'
+              }`}
+            >
+              <Wallet className="h-4 w-4" />
+              خططي
             </Link>
             <Button 
               variant="ghost" 

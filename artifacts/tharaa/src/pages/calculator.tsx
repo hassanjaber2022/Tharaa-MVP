@@ -27,6 +27,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Slider } from '@/components/ui/slider';
 import { Calculator as CalcIcon, LineChart, Save, RefreshCw } from 'lucide-react';
+import { formatCurrency } from '@/lib/utils';
 import { 
   LineChart as RechartsLineChart, 
   Line, 
@@ -66,9 +67,9 @@ export default function Calculator() {
     resolver: zodResolver(calcSchema),
     defaultValues: {
       currentAge: 25,
-      targetAge: 60,
-      initialBalance: 0,
-      monthlyContribution: 1000,
+      targetAge: 55,
+      initialBalance: 1500,
+      monthlyContribution: 400,
       matchedContribution: 0,
       annualStepUp: 0,
       annualFee: 0.5,
@@ -147,14 +148,6 @@ export default function Calculator() {
     });
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('ar-SA', {
-      style: 'currency',
-      currency: 'SAR',
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
-
   // Prepare chart data
   const chartData = result?.scenarios[0].yearlyValues.map((yv, index) => {
     const dataPoint: any = { year: yv.year };
@@ -190,28 +183,28 @@ export default function Calculator() {
                     <FormField control={form.control} name="currentAge" render={({ field }) => (
                       <FormItem>
                         <FormLabel>العمر الحالي</FormLabel>
-                        <FormControl><Input type="number" {...field} /></FormControl>
+                        <FormControl><Input type="number" inputMode="numeric" {...field} /></FormControl>
                       </FormItem>
                     )} />
                     <FormField control={form.control} name="targetAge" render={({ field }) => (
                       <FormItem>
                         <FormLabel>عمر التقاعد</FormLabel>
-                        <FormControl><Input type="number" {...field} /></FormControl>
+                        <FormControl><Input type="number" inputMode="numeric" {...field} /></FormControl>
                       </FormItem>
                     )} />
                   </div>
 
                   <FormField control={form.control} name="initialBalance" render={({ field }) => (
                     <FormItem>
-                      <FormLabel>الرصيد الابتدائي (ريال)</FormLabel>
-                      <FormControl><Input type="number" {...field} /></FormControl>
+                      <FormLabel>الرصيد الابتدائي (د.ك)</FormLabel>
+                      <FormControl><Input type="number" inputMode="numeric" {...field} /></FormControl>
                     </FormItem>
                   )} />
 
                   <FormField control={form.control} name="monthlyContribution" render={({ field }) => (
                     <FormItem>
-                      <FormLabel>المساهمة الشهرية (ريال)</FormLabel>
-                      <FormControl><Input type="number" {...field} /></FormControl>
+                      <FormLabel>المساهمة الشهرية (د.ك)</FormLabel>
+                      <FormControl><Input type="number" inputMode="numeric" {...field} /></FormControl>
                     </FormItem>
                   )} />
                 </div>
@@ -257,13 +250,13 @@ export default function Calculator() {
                     <FormField control={form.control} name="annualFee" render={({ field }) => (
                       <FormItem>
                         <FormLabel>رسوم الإدارة %</FormLabel>
-                        <FormControl><Input type="number" step="0.1" {...field} /></FormControl>
+                        <FormControl><Input type="number" inputMode="numeric" step="0.1" {...field} /></FormControl>
                       </FormItem>
                     )} />
                     <FormField control={form.control} name="withdrawalRate" render={({ field }) => (
                       <FormItem>
                         <FormLabel>معدل السحب %</FormLabel>
-                        <FormControl><Input type="number" step="0.1" {...field} /></FormControl>
+                        <FormControl><Input type="number" inputMode="numeric" step="0.1" {...field} /></FormControl>
                       </FormItem>
                     )} />
                   </div>
@@ -273,6 +266,7 @@ export default function Calculator() {
                   type="submit" 
                   className="w-full h-12 rounded-xl text-md"
                   disabled={calcMutation.isPending}
+                  data-testid="button-calculate"
                 >
                   {calcMutation.isPending ? (
                     <RefreshCw className="me-2 h-5 w-5 animate-spin" />
@@ -312,11 +306,11 @@ export default function Calculator() {
                         tickLine={false} 
                       />
                       <YAxis 
-                        tickFormatter={(value) => `${(value / 1000000).toFixed(1)}M`}
+                        tickFormatter={(value) => value >= 1000000 ? `${(value / 1000000).toFixed(1)} مليون` : value >= 1000 ? `${(value / 1000).toFixed(0)} ألف` : String(value)}
                         tick={{ fill: 'hsl(var(--muted-foreground))' }}
                         axisLine={false} 
                         tickLine={false}
-                        width={60}
+                        width={80}
                       />
                       <Tooltip 
                         formatter={(value: number, name: string) => {
@@ -354,6 +348,13 @@ export default function Calculator() {
                   return (
                     <Card 
                       key={scenario.key}
+                      role="button"
+                      tabIndex={0}
+                      aria-pressed={isSelected}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') setSelectedScenario(scenario.key);
+                      }}
+                      data-testid={`card-scenario-${scenario.key}`}
                       className={`p-5 rounded-3xl cursor-pointer transition-all border-2 ${
                         isSelected ? colorClass : 'border-transparent hover:border-border'
                       }`}
@@ -406,6 +407,7 @@ export default function Calculator() {
                   size="lg"
                   className="rounded-xl shrink-0 w-full sm:w-auto h-12"
                   disabled={savePlanMutation.isPending}
+                  data-testid="button-save-plan"
                 >
                   <Save className="me-2 h-5 w-5" />
                   {savePlanMutation.isPending ? 'جاري الحفظ...' : 'حفظ الخطة'}

@@ -24,6 +24,7 @@ import { useToast } from '@/hooks/use-toast';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Card } from '@/components/ui/card';
 import { Wallet, Target, Activity } from 'lucide-react';
+import { formatCurrency } from '@/lib/utils';
 
 const profileSchema = z.object({
   currentAge: z.coerce.number().min(18, 'يجب أن يكون العمر 18 على الأقل').max(99, 'يجب أن يكون العمر أقل من 99'),
@@ -51,13 +52,13 @@ export default function Onboarding() {
     resolver: zodResolver(profileSchema),
     defaultValues: {
       currentAge: 25,
-      targetAge: 60,
-      monthlyIncome: 10000,
-      essentialExpenses: 3000,
-      obligations: 1000,
-      currentSavings: 5000,
-      monthlyCapacity: 2000,
-      desiredFutureIncome: 15000,
+      targetAge: 55,
+      monthlyIncome: 1200,
+      essentialExpenses: 400,
+      obligations: 200,
+      currentSavings: 1500,
+      monthlyCapacity: 400,
+      desiredFutureIncome: 1500,
       emergencyMonths: 6,
       riskCategory: 'balanced',
     },
@@ -107,6 +108,11 @@ export default function Onboarding() {
     updateProfileMutation.mutate({ data });
   };
 
+  const income = form.watch("monthlyIncome") || 0;
+  const expenses = form.watch("essentialExpenses") || 0;
+  const obligations = form.watch("obligations") || 0;
+  const suggestedCapacity = Math.max(0, income - expenses - obligations);
+
   if (isLoadingProfile) {
     return (
       <div className="container mx-auto py-12 flex justify-center">
@@ -121,9 +127,12 @@ export default function Onboarding() {
   return (
     <div className="container max-w-3xl mx-auto py-12 px-4 pb-24">
       <div className="mb-10 text-center md:text-start">
+        <div className="mb-4 inline-flex items-center rounded-full border border-primary/15 bg-primary/5 px-4 py-2 text-sm font-medium text-primary">
+          إعداد الملف المالي · 3 أجزاء · نحو 3 دقائق
+        </div>
         <h1 className="text-3xl font-bold mb-3">ملفك المالي</h1>
         <p className="text-muted-foreground text-lg">
-          نحتاج لبعض التفاصيل لنساعدك في بناء خطة تناسبك. لا تقلق، بياناتك بأمان.
+          أدخل تقديراتك الحالية، ويمكنك تعديلها لاحقاً في أي وقت. لا تحتاج إلى أرقام دقيقة حتى تبدأ.
         </p>
       </div>
 
@@ -142,48 +151,53 @@ export default function Onboarding() {
               <FormField control={form.control} name="currentAge" render={({ field }) => (
                 <FormItem>
                   <FormLabel>عمرك الحالي</FormLabel>
-                  <FormControl><Input type="number" {...field} /></FormControl>
+                  <FormControl><Input type="number" inputMode="numeric" {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
               
               <FormField control={form.control} name="monthlyIncome" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>الدخل الشهري (ريال)</FormLabel>
-                  <FormControl><Input type="number" {...field} /></FormControl>
+                  <FormLabel>الدخل الشهري (د.ك)</FormLabel>
+                  <FormControl><Input type="number" inputMode="numeric" {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
               
               <FormField control={form.control} name="essentialExpenses" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>المصاريف الأساسية (إيجار، فواتير...)</FormLabel>
-                  <FormControl><Input type="number" {...field} /></FormControl>
+                  <FormLabel>المصاريف الأساسية (إيجار، فواتير...) (د.ك)</FormLabel>
+                  <FormControl><Input type="number" inputMode="numeric" {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
               
               <FormField control={form.control} name="obligations" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>الالتزامات والديون الشهرية</FormLabel>
-                  <FormControl><Input type="number" {...field} /></FormControl>
+                  <FormLabel>الالتزامات والديون الشهرية (د.ك)</FormLabel>
+                  <FormControl><Input type="number" inputMode="numeric" {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
               
               <FormField control={form.control} name="currentSavings" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>المدخرات الحالية (إجمالي)</FormLabel>
-                  <FormControl><Input type="number" {...field} /></FormControl>
+                  <FormLabel>المدخرات الحالية (إجمالي) (د.ك)</FormLabel>
+                  <FormControl><Input type="number" inputMode="numeric" {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
               
               <FormField control={form.control} name="monthlyCapacity" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>القدرة الشهرية للادخار/الاستثمار</FormLabel>
-                  <FormControl><Input type="number" {...field} /></FormControl>
-                  <FormDescription>المبلغ الذي تستطيع توفيره شهرياً</FormDescription>
+                  <FormLabel>القدرة الشهرية للادخار/الاستثمار (د.ك)</FormLabel>
+                  <FormControl><Input type="number" inputMode="numeric" {...field} /></FormControl>
+                  <FormDescription>
+                    المبلغ الذي تستطيع تخصيصه دون ضغط. الفائض المحسوب من بياناتك هو{' '}
+                    <strong className="font-semibold text-foreground">
+                      {formatCurrency(suggestedCapacity)}
+                    </strong>
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )} />
@@ -202,15 +216,15 @@ export default function Onboarding() {
               <FormField control={form.control} name="targetAge" render={({ field }) => (
                 <FormItem>
                   <FormLabel>العمر المستهدف للحرية المالية</FormLabel>
-                  <FormControl><Input type="number" {...field} /></FormControl>
+                  <FormControl><Input type="number" inputMode="numeric" {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
               
               <FormField control={form.control} name="desiredFutureIncome" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>الدخل الشهري المرغوب بعد التقاعد</FormLabel>
-                  <FormControl><Input type="number" {...field} /></FormControl>
+                  <FormLabel>الدخل الشهري المرغوب بعد التقاعد (د.ك)</FormLabel>
+                  <FormControl><Input type="number" inputMode="numeric" {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
@@ -218,7 +232,7 @@ export default function Onboarding() {
               <FormField control={form.control} name="emergencyMonths" render={({ field }) => (
                 <FormItem className="md:col-span-2">
                   <FormLabel>تغطية صندوق الطوارئ (بالأشهر)</FormLabel>
-                  <FormControl><Input type="number" {...field} /></FormControl>
+                  <FormControl><Input type="number" inputMode="numeric" {...field} /></FormControl>
                   <FormDescription>ينصح بـ 3 إلى 6 أشهر من المصاريف الأساسية</FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -240,7 +254,7 @@ export default function Onboarding() {
                 <FormControl>
                   <RadioGroup
                     onValueChange={field.onChange}
-                    defaultValue={field.value}
+                    value={field.value}
                     className="grid sm:grid-cols-3 gap-4"
                   >
                     <FormItem>
@@ -285,6 +299,7 @@ export default function Onboarding() {
               size="lg" 
               className="rounded-xl px-12 h-14 text-lg w-full sm:w-auto"
               disabled={updateProfileMutation.isPending}
+              data-testid="button-submit-onboarding"
             >
               {updateProfileMutation.isPending ? 'جاري الحفظ...' : 'حفظ ومتابعة'}
             </Button>

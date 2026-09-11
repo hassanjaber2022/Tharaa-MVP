@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { arSA } from 'date-fns/locale';
+import { formatCurrency } from '@/lib/utils';
 
 export default function Plans() {
   const { data: plans, isLoading, error } = useListPlans();
@@ -41,14 +42,6 @@ export default function Plans() {
     );
   }
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('ar-SA', {
-      style: 'currency',
-      currency: 'SAR',
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
-
   const getStatusBadge = (status: PlanStatus) => {
     switch (status) {
       case 'active':
@@ -68,7 +61,7 @@ export default function Plans() {
           <p className="text-muted-foreground">راجع خططك واستراتيجياتك للمستقبل</p>
         </div>
         <Link href="/calculator">
-          <Button className="rounded-xl">
+          <Button className="rounded-xl" data-testid="button-new-plan">
             <Plus className="me-2 h-5 w-5" />
             خطة جديدة
           </Button>
@@ -83,7 +76,7 @@ export default function Plans() {
             استخدم الحاسبة الذكية لإنشاء خطتك الأولى وحفظها للعودة إليها لاحقاً.
           </p>
           <Link href="/calculator">
-            <Button size="lg" className="rounded-xl">ابدأ الآن</Button>
+            <Button size="lg" className="rounded-xl" data-testid="button-start-now">ابدأ الآن</Button>
           </Link>
         </Card>
       ) : (

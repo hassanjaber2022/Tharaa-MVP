@@ -78,7 +78,7 @@ export default function Login() {
                 <FormItem>
                   <FormLabel>البريد الإلكتروني</FormLabel>
                   <FormControl>
-                    <Input type="email" placeholder="ahmed@example.com" dir="ltr" className="text-right" {...field} />
+                    <Input type="email" autoComplete="email" placeholder="ahmed@example.com" dir="ltr" className="text-right" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -92,7 +92,7 @@ export default function Login() {
                 <FormItem>
                   <FormLabel>كلمة المرور</FormLabel>
                   <FormControl>
-                    <Input type="password" placeholder="••••••••" dir="ltr" className="text-right" {...field} />
+                    <Input type="password" autoComplete="current-password" placeholder="••••••••" dir="ltr" className="text-right" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -103,6 +103,7 @@ export default function Login() {
               type="submit" 
               className="w-full h-12 text-md rounded-xl mt-4" 
               disabled={loginMutation.isPending}
+              data-testid="button-submit-login"
             >
               {loginMutation.isPending ? 'جاري الدخول...' : 'دخول'}
             </Button>

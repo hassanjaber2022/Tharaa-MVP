@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { arSA } from 'date-fns/locale';
+import { formatCurrency } from '@/lib/utils';
 
 export default function Dashboard() {
   const { data: dashboard, isLoading, error } = useGetDashboard();
@@ -47,14 +48,6 @@ export default function Dashboard() {
 
   const { user, profileComplete, activePlan, emergencyProgress, planCount, recommendation } = dashboard;
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('ar-SA', {
-      style: 'currency',
-      currency: 'SAR',
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
-
   return (
     <div className="container max-w-6xl mx-auto py-8 px-4 pb-24">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
@@ -65,10 +58,10 @@ export default function Dashboard() {
         
         <div className="flex items-center gap-3">
           <Link href="/onboarding">
-            <Button variant="outline" className="rounded-xl">تحديث الملف</Button>
+            <Button variant="outline" className="rounded-xl" data-testid="button-update-profile">تحديث الملف</Button>
           </Link>
           <Link href="/calculator">
-            <Button className="rounded-xl">الحاسبة الذكية</Button>
+            <Button className="rounded-xl" data-testid="button-open-calculator">الحاسبة الذكية</Button>
           </Link>
         </div>
       </div>
@@ -81,7 +74,7 @@ export default function Dashboard() {
             نحتاج لبعض التفاصيل حول وضعك الحالي وأهدافك لنتمكن من تقديم توصيات دقيقة.
           </p>
           <Link href="/onboarding">
-            <Button size="lg" className="rounded-xl px-8">أكمل الملف الآن</Button>
+            <Button size="lg" className="rounded-xl px-8" data-testid="button-complete-profile">أكمل الملف الآن</Button>
           </Link>
         </Card>
       ) : !activePlan ? (
@@ -92,7 +85,7 @@ export default function Dashboard() {
             استخدم الحاسبة الذكية لاستكشاف سيناريوهات نمو ثروتك وحفظ خطتك الأولى.
           </p>
           <Link href="/calculator">
-            <Button size="lg" className="rounded-xl px-8 bg-secondary hover:bg-secondary/90 text-white">
+            <Button size="lg" className="rounded-xl px-8 bg-secondary hover:bg-secondary/90 text-white" data-testid="button-start-calculator">
               افتح الحاسبة
             </Button>
           </Link>
@@ -199,7 +192,7 @@ export default function Dashboard() {
             
             <div className="mt-8 pt-6 border-t border-border/50 flex justify-end">
               <Link href={`/plans/${activePlan.id}`}>
-                <Button variant="outline" className="rounded-xl">عرض تفاصيل الخطة</Button>
+                <Button variant="outline" className="rounded-xl" data-testid={`button-view-plan-${activePlan.id}`}>عرض تفاصيل الخطة</Button>
               </Link>
             </div>
           </Card>

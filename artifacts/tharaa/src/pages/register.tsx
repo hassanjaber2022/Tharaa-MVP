@@ -81,7 +81,7 @@ export default function Register() {
                 <FormItem>
                   <FormLabel>الاسم الكامل</FormLabel>
                   <FormControl>
-                    <Input placeholder="أحمد محمد" {...field} />
+                    <Input autoComplete="name" placeholder="أحمد محمد" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -95,7 +95,7 @@ export default function Register() {
                 <FormItem>
                   <FormLabel>البريد الإلكتروني</FormLabel>
                   <FormControl>
-                    <Input type="email" placeholder="ahmed@example.com" dir="ltr" className="text-right" {...field} />
+                    <Input type="email" autoComplete="email" placeholder="ahmed@example.com" dir="ltr" className="text-right" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -109,7 +109,7 @@ export default function Register() {
                 <FormItem>
                   <FormLabel>كلمة المرور</FormLabel>
                   <FormControl>
-                    <Input type="password" placeholder="••••••••" dir="ltr" className="text-right" {...field} />
+                    <Input type="password" autoComplete="new-password" placeholder="••••••••" dir="ltr" className="text-right" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -120,6 +120,7 @@ export default function Register() {
               type="submit" 
               className="w-full h-12 text-md rounded-xl mt-4" 
               disabled={registerMutation.isPending}
+              data-testid="button-submit-register"
             >
               {registerMutation.isPending ? 'جاري الإنشاء...' : 'إنشاء الحساب'}
             </Button>
