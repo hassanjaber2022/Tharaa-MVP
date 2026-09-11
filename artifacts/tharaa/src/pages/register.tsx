@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
+import { getApiErrorMessage } from '@/lib/api-error';
 
 const registerSchema = z.object({
   name: z.string().min(2, 'الاسم يجب أن يكون حرفين على الأقل'),
@@ -49,11 +50,11 @@ export default function Register() {
         });
         setLocation('/onboarding');
       },
-      onError: (error: any) => {
+      onError: (error: unknown) => {
         toast({
           variant: 'destructive',
           title: 'فشل إنشاء الحساب',
-          description: error.response?.data?.error || 'حدث خطأ غير متوقع',
+          description: getApiErrorMessage(error, 'تعذر إنشاء الحساب. يرجى المحاولة مرة أخرى.'),
         });
       },
     },

@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
+import { getApiErrorMessage } from '@/lib/api-error';
 
 const loginSchema = z.object({
   email: z.string().email('البريد الإلكتروني غير صحيح'),
@@ -46,11 +47,11 @@ export default function Login() {
         });
         setLocation('/dashboard');
       },
-      onError: (error: any) => {
+      onError: (error: unknown) => {
         toast({
           variant: 'destructive',
           title: 'فشل تسجيل الدخول',
-          description: error.response?.data?.error || 'البريد الإلكتروني أو كلمة المرور غير صحيحة',
+          description: getApiErrorMessage(error, 'البريد الإلكتروني أو كلمة المرور غير صحيحة'),
         });
       },
     },

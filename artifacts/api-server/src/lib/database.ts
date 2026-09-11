@@ -3,13 +3,40 @@ import mongoose from "mongoose";
 import { logger } from "./logger";
 import { User } from "../models";
 
-export async function connectDatabase(): Promise<void> {
-  const mongoUri = process.env.MONGODB_URI;
-  if (!mongoUri) {
+export function getMongoUri(): string {
+  const rawMongoUri = process.env.MONGODB_URI;
+  if (!rawMongoUri) {
     throw new Error("MONGODB_URI is required");
   }
 
-  await mongoose.connect(mongoUri);
+  let mongoUri = rawMongoUri.trim();
+  if (mongoUri.startsWith("MONGODB_URI=")) {
+    mongoUri = mongoUri.slice("MONGODB_URI=".length).trim();
+  }
+
+  const firstCharacter = mongoUri.at(0);
+  const lastCharacter = mongoUri.at(-1);
+  if (
+    mongoUri.length >= 2 &&
+    ((firstCharacter === '"' && lastCharacter === '"') ||
+      (firstCharacter === "'" && lastCharacter === "'"))
+  ) {
+    mongoUri = mongoUri.slice(1, -1).trim();
+  }
+
+  mongoUri = mongoUri.replace(/[\r\n\t]/g, "");
+
+  if (!mongoUri.startsWith("mongodb://") && !mongoUri.startsWith("mongodb+srv://")) {
+    throw new Error(
+      "MONGODB_URI must be a MongoDB Drivers connection string starting with mongodb:// or mongodb+srv://",
+    );
+  }
+
+  return mongoUri;
+}
+
+export async function connectDatabase(): Promise<void> {
+  await mongoose.connect(getMongoUri());
   logger.info("Connected to MongoDB");
   await ensureAdminUser();
 }

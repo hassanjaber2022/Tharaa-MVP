@@ -6,6 +6,7 @@ import helmet from "helmet";
 import { rateLimit } from "express-rate-limit";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import { getMongoUri } from "./lib/database";
 
 const app: Express = express();
 
@@ -39,7 +40,7 @@ app.use(
     resave: false,
     saveUninitialized: false,
     store: MongoStore.create({
-      mongoUrl: process.env.MONGODB_URI,
+      mongoUrl: getMongoUri(),
       collectionName: "sessions",
       touchAfter: 24 * 3600,
     }),
