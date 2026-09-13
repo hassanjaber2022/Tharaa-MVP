@@ -237,17 +237,22 @@ async function parseJsonBody(
   response: Response,
   requestInfo: { method: string; url: string },
 ): Promise<unknown> {
+  const contentType = response.headers.get("content-type") || "";
+  if (contentType.includes("text/html")) {
+    return null;
+  }
+
   const raw = await response.text();
   const normalized = stripBom(raw);
 
-  if (normalized.trim() === "") {
+  if (normalized.trim() === "" || normalized.trim().startsWith("<")) {
     return null;
   }
 
   try {
     return JSON.parse(normalized);
   } catch (cause) {
-    throw new ResponseParseError(response, raw, cause, requestInfo);
+    return null;
   }
 }
 

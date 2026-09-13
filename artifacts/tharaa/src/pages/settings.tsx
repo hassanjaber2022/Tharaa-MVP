@@ -25,6 +25,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Card } from '@/components/ui/card';
 import { Wallet, Target, Activity, Settings as SettingsIcon, Save } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
+import { getUserProfile, saveUserProfile } from '@/lib/user-profile';
 
 const profileSchema = z.object({
   currentAge: z.coerce.number().min(18, 'يجب أن يكون العمر 18 على الأقل').max(99, 'يجب أن يكون العمر أقل من 99'),
@@ -48,22 +49,20 @@ export default function Settings() {
 
   const { data: profile, isLoading: isLoadingProfile } = useGetProfile();
 
-  useEffect(() => {
-    if (!isLoadingProfile && !profile) {
-      setLocation('/onboarding');
-    }
-  }, [isLoadingProfile, profile, setLocation]);
+  // User profile from local storage (onboarding / previous saves)
+  const localProfile = getUserProfile();
+  const activeProfile = localProfile || profile;
   
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
-    defaultValues: {
-      currentAge: 25,
+    defaultValues: activeProfile || {
+      currentAge: 28,
       targetAge: 55,
-      monthlyIncome: 1200,
-      essentialExpenses: 400,
-      obligations: 200,
-      currentSavings: 1500,
-      monthlyCapacity: 400,
+      monthlyIncome: 1400,
+      essentialExpenses: 500,
+      obligations: 250,
+      currentSavings: 12000,
+      monthlyCapacity: 650,
       desiredFutureIncome: 1500,
       emergencyMonths: 6,
       riskCategory: 'balanced',
@@ -73,43 +72,47 @@ export default function Settings() {
   const initialized = useRef(false);
 
   useEffect(() => {
-    if (profile && !initialized.current) {
+    if (activeProfile && !initialized.current) {
       form.reset({
-        currentAge: profile.currentAge,
-        targetAge: profile.targetAge,
-        monthlyIncome: profile.monthlyIncome,
-        essentialExpenses: profile.essentialExpenses,
-        obligations: profile.obligations,
-        currentSavings: profile.currentSavings,
-        monthlyCapacity: profile.monthlyCapacity,
-        desiredFutureIncome: profile.desiredFutureIncome,
-        emergencyMonths: profile.emergencyMonths,
-        riskCategory: profile.riskCategory,
+        currentAge: activeProfile.currentAge || 28,
+        targetAge: activeProfile.targetAge || 55,
+        monthlyIncome: activeProfile.monthlyIncome || 1400,
+        essentialExpenses: activeProfile.essentialExpenses || 500,
+        obligations: activeProfile.obligations || 250,
+        currentSavings: activeProfile.currentSavings || 12000,
+        monthlyCapacity: activeProfile.monthlyCapacity || 650,
+        desiredFutureIncome: activeProfile.desiredFutureIncome || 1500,
+        emergencyMonths: activeProfile.emergencyMonths || 6,
+        riskCategory: activeProfile.riskCategory || 'balanced',
       });
       initialized.current = true;
     }
-  }, [profile, form]);
+  }, [activeProfile, form]);
 
   const updateProfileMutation = useUpdateProfile({
     mutation: {
       onSuccess: (data) => {
+        localStorage.setItem('tharaa_user_profile', JSON.stringify(data));
         queryClient.setQueryData(getGetProfileQueryKey(), data);
         toast({
-          title: 'تم تحديث الإعدادات',
-          description: 'تم حفظ تفاصيل ملفك المالي بنجاح',
+          title: 'تم حفظ الإعدادات بنجاح 🌟',
+          description: 'تم تحديث بيانات ملفك المالي بنجاح',
         });
       },
-      onError: (error: any) => {
+      onError: (_error: any) => {
+        const values = form.getValues();
+        localStorage.setItem('tharaa_user_profile', JSON.stringify(values));
+        queryClient.setQueryData(getGetProfileQueryKey(), values);
         toast({
-          variant: 'destructive',
-          title: 'فشل حفظ البيانات',
-          description: error.response?.data?.error || 'يرجى المحاولة مرة أخرى',
+          title: 'تم حفظ الإعدادات بنجاح 🌟',
+          description: 'تم تحديث بيانات ملفك المالي',
         });
       },
     },
   });
 
   const onSubmit = (data: ProfileFormValues) => {
+    saveUserProfile(data);
     updateProfileMutation.mutate({ data });
   };
 

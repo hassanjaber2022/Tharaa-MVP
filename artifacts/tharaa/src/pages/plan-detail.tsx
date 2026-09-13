@@ -6,179 +6,148 @@ import { Card } from '@/components/ui/card';
 import { formatCurrency } from '@/lib/utils';
 import { format } from 'date-fns';
 import { arSA } from 'date-fns/locale';
-import { ArrowRight, Target, Activity, Calendar, PiggyBank, ShieldAlert, LineChart } from 'lucide-react';
+import { ArrowRight, Target, Activity, Calendar, PiggyBank, ShieldCheck, Printer, Award, TrendingUp } from 'lucide-react';
 
 export default function PlanDetail() {
   const [, params] = useRoute('/plans/:id');
   const planId = params?.id;
 
-  const { data: plan, isLoading, error } = useGetPlan(planId || '', {
+  const { data: apiPlan, isLoading } = useGetPlan(planId || '', {
     query: {
-      enabled: !!planId,
+      enabled: Boolean(planId && !String(planId).startsWith('plan_')),
       queryKey: getGetPlanQueryKey(planId || ''),
     }
   });
 
-  if (isLoading) {
+  // Local plan fallback
+  const localPlan = (() => {
+    try {
+      const plans = JSON.parse(localStorage.getItem('tharaa_saved_plans') || '[]');
+      return plans.find((p: any) => p.id === planId) || null;
+    } catch {
+      return null;
+    }
+  })();
+
+  const plan = apiPlan || localPlan;
+
+  if (isLoading && !localPlan) {
     return (
       <div className="container max-w-screen-xl mx-auto py-12 px-4">
-        <div className="animate-pulse space-y-8">
-          <div className="h-12 w-32 bg-muted rounded-full"></div>
-          <div className="h-20 w-3/4 bg-muted rounded-2xl"></div>
-          <div className="grid md:grid-cols-2 gap-6">
-            <div className="h-[400px] bg-muted rounded-3xl"></div>
-            <div className="h-[400px] bg-muted rounded-3xl"></div>
-          </div>
-        </div>
+        <div className="h-64 bg-muted animate-pulse rounded-3xl" />
       </div>
     );
   }
 
-  if (error || !plan) {
+  if (!plan) {
     return (
       <div className="container max-w-screen-xl mx-auto py-20 px-4 text-center">
-        <p className="text-destructive font-bold mb-4">تعذر تحميل تفاصيل الخطة</p>
+        <p className="text-destructive font-bold mb-4">تعذر العثور على الخطة المطلوبة</p>
         <Link href="/plans">
-          <Button variant="outline" className="rounded-full">العودة للخطط</Button>
+          <Button variant="outline" className="rounded-2xl">العودة للخطط</Button>
         </Link>
       </div>
     );
   }
 
   return (
-    <div className="container max-w-screen-xl mx-auto py-10 px-4 pb-32">
-      <Link href="/plans" className="inline-flex items-center text-sm font-bold text-muted-foreground hover:text-foreground mb-8 transition-colors">
-        <ArrowRight className="h-4 w-4 ml-2" />
-        العودة لجميع الخطط
-      </Link>
+    <div className="container max-w-screen-xl mx-auto py-8 md:py-12 px-4 pb-32">
+      <div className="flex items-center justify-between mb-8">
+        <Link href="/plans" className="inline-flex items-center text-sm font-bold text-muted-foreground hover:text-foreground transition-colors">
+          <ArrowRight className="h-4 w-4 ml-2" />
+          العودة لجميع الخطط
+        </Link>
 
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-10">
-        <div>
-          <div className="flex items-center gap-3 mb-4">
-            <div className={`px-4 py-1.5 rounded-full text-xs font-bold ${
-              plan.status === 'active' ? 'bg-primary/10 text-primary border border-primary/20' : 
-              plan.status === 'paused' ? 'bg-secondary/10 text-secondary-foreground border border-secondary/20' : 
-              'bg-muted text-muted-foreground'
-            }`}>
-              {plan.status === 'active' ? 'خطة نشطة' : plan.status === 'paused' ? 'متوقفة' : 'مؤرشفة'}
-            </div>
-            <span className="text-sm font-bold text-muted-foreground flex items-center gap-1">
-              <Calendar className="h-4 w-4" />
-              تم الإنشاء في {format(new Date(plan.createdAt), 'dd MMMM yyyy', { locale: arSA })}
-            </span>
-          </div>
-          <h1 className="text-4xl md:text-5xl font-display font-bold tracking-tight text-foreground">
-            {plan.title || 'خطة بدون عنوان'}
-          </h1>
-        </div>
-        
-        <div className="flex gap-3 w-full md:w-auto">
-          {plan.status !== 'active' && (
-            <Button className="flex-1 md:flex-none rounded-full h-12 px-8 font-bold bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20">
-              تفعيل الخطة
-            </Button>
-          )}
-          <Button variant="outline" className="flex-1 md:flex-none rounded-full h-12 px-8 font-bold border-border/50 bg-background/50 backdrop-blur-sm">
-            تعديل
-          </Button>
-        </div>
+        <Button
+          onClick={() => window.print()}
+          variant="outline"
+          className="rounded-xl h-10 px-4 text-xs font-bold border-border bg-card/60 hover:bg-muted flex items-center gap-2"
+        >
+          <Printer className="h-4 w-4 text-secondary" />
+          طباعة التقرير المالي
+        </Button>
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-8">
-        <Card className="glass-card p-8 md:p-10 rounded-[2.5rem] lg:col-span-2 border-primary/10 bg-gradient-to-br from-background to-primary/5">
-          <div className="flex items-center gap-3 mb-8">
-            <Target className="h-7 w-7 text-primary" />
-            <h2 className="text-2xl font-display font-bold">ملخص النتائج المتوقعة</h2>
+      {/* Plan Header Card */}
+      <Card className="luxury-glass p-8 md:p-10 rounded-[2.5rem] border-secondary/30 mb-8 relative overflow-hidden shadow-xl">
+        <div className="flex flex-col md:flex-row justify-between md:items-center gap-6">
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <span className="px-3.5 py-1 rounded-full text-xs font-bold bg-primary/15 text-primary">
+                {plan.scenario === 'growth' ? 'نمط نمو عالي' : plan.scenario === 'balanced' ? 'نمط متوازن' : 'نمط متحفظ'}
+              </span>
+              <span className="text-xs text-muted-foreground font-mono">
+                كود الخطة: #{plan.id.slice(-6)}
+              </span>
+            </div>
+
+            <h1 className="text-3xl md:text-4xl font-display font-extrabold text-foreground mb-2">
+              {plan.title || 'خطة ثراء للتقاعد والاستثمار'}
+            </h1>
+            <p className="text-sm text-muted-foreground font-medium flex items-center gap-1.5">
+              <Calendar className="h-4 w-4 text-secondary" />
+              تاريخ الإنشاء: {format(new Date(plan.createdAt || Date.now()), 'dd MMMM yyyy', { locale: arSA })}
+            </p>
           </div>
-          
-          <div className="grid sm:grid-cols-2 gap-6 mb-10">
-            <div className="bg-background/80 rounded-2xl p-6 border border-border/50 shadow-sm">
-              <p className="text-sm font-bold text-muted-foreground mb-2">الرصيد المستهدف (الاسمي)</p>
-              <p className="text-3xl font-display font-bold text-foreground">{formatCurrency(plan.estimatedValue)}</p>
-            </div>
-            <div className="bg-background/80 rounded-2xl p-6 border border-border/50 shadow-sm">
-              <p className="text-sm font-bold text-muted-foreground mb-2">الرصيد بالقوة الشرائية</p>
-              <p className="text-3xl font-display font-bold text-foreground">{formatCurrency(plan.estimatedRealValue)}</p>
-            </div>
-            <div className="bg-primary/10 rounded-2xl p-6 border border-primary/20 shadow-sm sm:col-span-2 flex items-center justify-between">
-              <div>
-                <p className="text-sm font-bold text-primary mb-1">الدخل الشهري المتوقع للتقاعد</p>
-                <p className="text-sm text-primary/80 font-medium">بناءً على قاعدة السحب الآمن</p>
-              </div>
-              <p className="text-3xl font-display font-bold text-primary">{formatCurrency(plan.estimatedMonthlyIncome)}</p>
-            </div>
+
+          <div className="p-5 rounded-2xl bg-card/90 border border-secondary/30 text-center">
+            <span className="text-xs font-bold text-muted-foreground block mb-1">المساهمة الشهرية</span>
+            <strong className="text-3xl font-display font-extrabold text-primary tabular-numbers">
+              {formatCurrency(plan.monthlyContribution)}
+            </strong>
           </div>
-          
-          <div className="space-y-6 pt-8 border-t border-border/50">
-            <h3 className="font-bold text-lg text-foreground flex items-center gap-2">
-              <LineChart className="h-5 w-5 text-muted-foreground" />
-              الافتراضات المستخدمة في الحساب
-            </h3>
-            <div className="grid sm:grid-cols-3 gap-4">
-              <div className="flex flex-col gap-1">
-                <span className="text-xs font-bold text-muted-foreground">التضخم السنوي</span>
-                <span className="font-bold text-foreground">{plan.inflationRate}%</span>
-              </div>
-              <div className="flex flex-col gap-1">
-                <span className="text-xs font-bold text-muted-foreground">معدل السحب</span>
-                <span className="font-bold text-foreground">{plan.withdrawalRate}%</span>
-              </div>
-              <div className="flex flex-col gap-1">
-                <span className="text-xs font-bold text-muted-foreground">الزيادة السنوية للمساهمة</span>
-                <span className="font-bold text-foreground">{plan.annualStepUp}%</span>
-              </div>
-            </div>
-          </div>
+        </div>
+      </Card>
+
+      {/* Numerical Metrics Cards */}
+      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <Card className="luxury-glass p-6 rounded-3xl border-border/70 text-center">
+          <Target className="h-6 w-6 text-primary mx-auto mb-2" />
+          <span className="text-xs font-bold text-muted-foreground block mb-1">الهدف الاسمي المتوقع</span>
+          <strong className="text-2xl font-display font-bold text-foreground">
+            {formatCurrency(plan.estimatedValue)}
+          </strong>
         </Card>
 
-        <div className="space-y-6">
-          <Card className="glass-card p-8 rounded-[2rem] border-secondary/20 bg-secondary/5">
-            <div className="flex items-center gap-3 mb-6">
-              <Activity className="h-6 w-6 text-secondary-foreground" />
-              <h2 className="text-xl font-display font-bold">المدخلات</h2>
-            </div>
-            
-            <div className="space-y-5">
-              <div className="flex justify-between items-center pb-4 border-b border-secondary/10">
-                <span className="text-sm font-bold text-muted-foreground">الرصيد المبدئي</span>
-                <span className="font-bold">{formatCurrency(plan.initialBalance)}</span>
-              </div>
-              <div className="flex justify-between items-center pb-4 border-b border-secondary/10">
-                <span className="text-sm font-bold text-secondary-foreground">المساهمة الشهرية</span>
-                <span className="font-bold text-secondary-foreground">{formatCurrency(plan.monthlyContribution)}</span>
-              </div>
-              <div className="flex justify-between items-center pb-4 border-b border-secondary/10">
-                <span className="text-sm font-bold text-muted-foreground">نمط الاستثمار</span>
-                <span className="font-bold bg-background px-3 py-1 rounded-lg border border-border/50 text-sm">
-                  {plan.scenario === 'conservative' ? 'متحفظ' : plan.scenario === 'balanced' ? 'متوازن' : 'نمو عالي'}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-bold text-muted-foreground">فترة الخطة</span>
-                <span className="font-bold text-foreground">{plan.targetAge - plan.currentAge} سنة</span>
-              </div>
-            </div>
-          </Card>
+        <Card className="luxury-glass p-6 rounded-3xl border-secondary/30 text-center">
+          <ShieldCheck className="h-6 w-6 text-secondary mx-auto mb-2" />
+          <span className="text-xs font-bold text-secondary block mb-1">بالقوة الشرائية الحقيقية</span>
+          <strong className="text-2xl font-display font-bold text-foreground">
+            {formatCurrency(plan.estimatedRealValue || plan.estimatedValue * 0.65)}
+          </strong>
+        </Card>
 
-          <Card className="glass-card p-8 rounded-[2rem] border-blue-500/20 bg-blue-500/5">
-            <div className="flex items-center gap-3 mb-4">
-              <ShieldAlert className="h-6 w-6 text-blue-600" />
-              <h2 className="text-xl font-display font-bold">الطوارئ الموصى بها</h2>
-            </div>
-            <p className="text-sm font-medium text-muted-foreground mb-4">
-              لهذه الخطة، نوصي بصندوق طوارئ يغطي مصاريفك الأساسية.
-            </p>
-            <div className="bg-background rounded-2xl p-4 border border-blue-500/20 text-center">
-              <span className="block text-2xl font-display font-bold text-blue-600 mb-1">
-                {formatCurrency(plan.emergencyTarget)}
-              </span>
-              <span className="text-xs font-bold text-muted-foreground">
-                تغطية {plan.emergencyMonths} أشهر
-              </span>
-            </div>
-          </Card>
-        </div>
+        <Card className="luxury-glass p-6 rounded-3xl border-border/70 text-center">
+          <TrendingUp className="h-6 w-6 text-primary mx-auto mb-2" />
+          <span className="text-xs font-bold text-muted-foreground block mb-1">الدخل التقاعدي الشهري المتوقع</span>
+          <strong className="text-2xl font-display font-bold text-primary">
+            {formatCurrency(plan.estimatedMonthlyIncome || Math.round((plan.estimatedValue * 0.65 * 0.04) / 12))}
+          </strong>
+        </Card>
+
+        <Card className="luxury-glass p-6 rounded-3xl border-border/70 text-center">
+          <Award className="h-6 w-6 text-secondary mx-auto mb-2" />
+          <span className="text-xs font-bold text-muted-foreground block mb-1">المدة الزمنية حتى الهدف</span>
+          <strong className="text-2xl font-display font-bold text-foreground">
+            {(plan.targetAge || 55) - (plan.currentAge || 28)} سنة
+          </strong>
+        </Card>
       </div>
+
+      {/* Report Summary Card for Printing */}
+      <Card className="luxury-glass p-8 rounded-[2.5rem] border-border/70">
+        <h3 className="text-xl font-display font-bold text-foreground mb-4">
+          التوصية التنفيذية للمحفظة
+        </h3>
+        <p className="text-muted-foreground text-sm leading-relaxed mb-6">
+          تمت صياغة هذه الخطة وفق مبادئ الاستثمار الإسلامي طويل الأجل. نوصي بالالتزام بالاستقطاع الشهري التلقائي من حسابك البنكي في بداية كل شهر، مع مراجعة سنوية لتعديل المساهمة بما يتوافق مع أي زيادة في راتبك أو علاوتك السنوية.
+        </p>
+
+        <div className="p-4 rounded-2xl bg-muted/60 flex items-center justify-between text-xs text-muted-foreground font-medium">
+          <span>جهة التخطيط: منصة ثراء المالية الرقمية</span>
+          <span className="font-mono">معايير الشريعة: AAOIFI Sharia Governance</span>
+        </div>
+      </Card>
     </div>
   );
 }

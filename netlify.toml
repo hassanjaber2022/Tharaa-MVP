@@ -1,0 +1,9 @@
+[build]
+  command = "pnpm --filter @workspace/tharaa run build"
+  publish = "artifacts/tharaa/dist/public"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
