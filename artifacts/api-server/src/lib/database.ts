@@ -33,17 +33,19 @@ export function getMongoUri(): string {
   }
 
   const mongoPassword = process.env.MONGODB_PASSWORD;
+  const schemeEnd = mongoUri.indexOf("://") + 3;
+  const relativeAuthorityEnd = mongoUri.slice(schemeEnd).search(/[/?#]/);
+  const effectiveAuthorityEnd =
+    relativeAuthorityEnd === -1 ? mongoUri.length : schemeEnd + relativeAuthorityEnd;
+  const authority = mongoUri.slice(schemeEnd, effectiveAuthorityEnd);
+  const separatorIndex = authority.lastIndexOf("@");
+
   if (mongoPassword) {
-    const schemeEnd = mongoUri.indexOf("://") + 3;
-    const relativeAuthorityEnd = mongoUri.slice(schemeEnd).search(/[/?#]/);
-    const effectiveAuthorityEnd =
-      relativeAuthorityEnd === -1 ? mongoUri.length : schemeEnd + relativeAuthorityEnd;
-    const authority = mongoUri.slice(schemeEnd, effectiveAuthorityEnd);
-    const separatorIndex = authority.lastIndexOf("@");
     const userInfo = separatorIndex === -1 ? "" : authority.slice(0, separatorIndex);
     const usernameSeparatorIndex = userInfo.indexOf(":");
-    const username =
+    let username =
       usernameSeparatorIndex === -1 ? userInfo : userInfo.slice(0, usernameSeparatorIndex);
+    username = username.replace(/[<>]/g, "").trim();
 
     if (!username || separatorIndex === -1) {
       throw new Error("MONGODB_URI must include a database username");
@@ -51,13 +53,25 @@ export function getMongoUri(): string {
 
     const hostAndOptions = mongoUri.slice(schemeEnd + separatorIndex + 1);
     mongoUri = `${mongoUri.slice(0, schemeEnd)}${username}:${encodeURIComponent(mongoPassword)}@${hostAndOptions}`;
+  } else if (separatorIndex !== -1) {
+    // If password was provided inside MONGODB_URI directly, safely encode any special characters
+    const userInfo = authority.slice(0, separatorIndex);
+    const colonIndex = userInfo.indexOf(":");
+    if (colonIndex !== -1) {
+      let username = userInfo.slice(0, colonIndex).replace(/[<>]/g, "").trim();
+      let rawPass = userInfo.slice(colonIndex + 1).replace(/[<>]/g, "").trim();
+      try {
+        rawPass = decodeURIComponent(rawPass);
+      } catch {}
+      const safeEncodedPass = encodeURIComponent(rawPass);
+      const hostAndOptions = mongoUri.slice(schemeEnd + separatorIndex + 1);
+      mongoUri = `${mongoUri.slice(0, schemeEnd)}${username}:${safeEncodedPass}@${hostAndOptions}`;
+    }
   }
 
-  if (/[<>]/.test(mongoUri)) {
-    throw new Error("MONGODB_URI still contains an unreplaced placeholder");
-  }
+  // Remove any stray angle brackets that user might have pasted around username or cluster
+  mongoUri = mongoUri.replace(/[<>]/g, "");
 
-  const schemeEnd = mongoUri.indexOf("://") + 3;
   const queryStart = mongoUri.indexOf("?", schemeEnd);
   const pathStart = mongoUri.indexOf("/", schemeEnd);
   if (pathStart === -1 || (queryStart !== -1 && pathStart > queryStart)) {
