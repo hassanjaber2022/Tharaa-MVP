@@ -123,6 +123,16 @@ export function Navbar() {
 
         {/* Action controls (Theme, Currency, User Profile) */}
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* Interactive Tour Trigger */}
+          <button
+            onClick={() => window.dispatchEvent(new Event('tharaa_open_tour'))}
+            title="جولة تفاعلية تشرح مميزات الموقع"
+            className="h-10 px-3.5 rounded-full border border-secondary/40 bg-secondary/15 hover:bg-secondary/25 text-xs font-bold text-foreground flex items-center gap-1.5 transition-all hover:scale-105 cursor-pointer shadow-sm"
+          >
+            <Sparkles className="h-3.5 w-3.5 text-secondary" />
+            <span className="hidden lg:inline">جولة تفاعلية ✨</span>
+          </button>
+
           {/* Currency Switcher */}
           <button
             onClick={cycleCurrency}

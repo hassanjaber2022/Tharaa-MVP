@@ -64,17 +64,29 @@ export default function Home() {
             رتّب دخلك ومصاريفك، اكتشف <strong className="text-foreground">سن تقاعدك المبكر</strong>، وشاهد كيف تتضاعف مدخراتك الصغيرة إلى ثروة متوافقة مع الشريعة الإسلامية.
           </p>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 max-w-md mx-auto">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 max-w-xl mx-auto">
             <Link href={isAuthenticated ? "/onboarding" : "/register"} className="w-full sm:w-auto">
-              <Button size="lg" className="w-full sm:w-auto rounded-2xl px-10 h-16 text-lg font-bold bg-primary text-white hover:bg-primary/90 shadow-2xl shadow-primary/30 transition-all hover:scale-105 active:scale-95">
-                احسب خطتك في دقيقة (الاستبيان الذكي)
+              <Button size="lg" className="w-full sm:w-auto rounded-2xl px-8 h-16 text-base sm:text-lg font-bold bg-primary text-white hover:bg-primary/90 shadow-2xl shadow-primary/30 transition-all hover:scale-105 active:scale-95">
+                احسب خطتك في دقيقة 🌿
                 <ArrowLeft className="mr-2 h-5 w-5" />
               </Button>
             </Link>
+
+            <Button
+              type="button"
+              variant="outline"
+              size="lg"
+              onClick={() => window.dispatchEvent(new Event('tharaa_open_tour'))}
+              className="w-full sm:w-auto rounded-2xl px-6 h-16 text-base font-bold border-secondary/40 bg-secondary/10 hover:bg-secondary/20 text-foreground transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg hover:scale-105"
+            >
+              <Sparkles className="h-5 w-5 text-secondary" />
+              <span>جولة تفاعلية تشرح الموقع ✨</span>
+            </Button>
+
             {!isAuthenticated && (
               <Link href="/login" className="w-full sm:w-auto">
-                <Button variant="outline" size="lg" className="w-full sm:w-auto rounded-2xl px-8 h-16 text-lg font-bold border-border/80 bg-card/60 hover:bg-muted transition-all">
-                  لدي حساب مسبقاً
+                <Button variant="ghost" size="lg" className="w-full sm:w-auto rounded-2xl px-6 h-16 text-base font-bold border border-border/80 bg-card/60 hover:bg-muted transition-all">
+                  دخول
                 </Button>
               </Link>
             )}

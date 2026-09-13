@@ -1,5 +1,6 @@
 import { ReactNode } from 'react';
 import { Navbar } from './Navbar';
+import { WelcomeInteractiveTour } from '@/components/interactive/WelcomeInteractiveTour';
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
@@ -10,6 +11,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <main className="flex-1 w-full">
           {children}
         </main>
+        <WelcomeInteractiveTour />
         <footer className="border-t border-border/30 bg-background/50 backdrop-blur-sm py-8 md:py-0">
           <div className="container flex flex-col items-center justify-between gap-6 md:h-24 md:flex-row px-4 md:px-8 mx-auto">
             <div className="flex items-center gap-2 opacity-80 hover:opacity-100 transition-opacity">
