@@ -4,7 +4,7 @@ services:
     runtime: node
     region: frankfurt
     plan: free
-    buildCommand: corepack enable && pnpm install && pnpm --filter @workspace/api-server run build
+    buildCommand: npx -y pnpm install && npx -y pnpm --filter @workspace/api-server run build
     startCommand: node artifacts/api-server/dist/index.mjs
     envVars:
       - key: NODE_ENV
