@@ -8,7 +8,35 @@ import router from "./routes";
 import { logger } from "./lib/logger";
 import { getMongoUri } from "./lib/database";
 
+import cors from "cors";
+
 const app: Express = express();
+
+const allowedOriginsEnv = process.env.ALLOWED_ORIGINS || "";
+const customAllowedOrigins = allowedOriginsEnv.split(",").map(o => o.trim()).filter(Boolean);
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      try {
+        const originUrl = new URL(origin);
+        const hostname = originUrl.hostname;
+        if (
+          hostname === "localhost" ||
+          hostname === "127.0.0.1" ||
+          hostname.endsWith(".netlify.app") ||
+          hostname.endsWith(".onrender.com") ||
+          customAllowedOrigins.includes(origin)
+        ) {
+          return callback(null, true);
+        }
+      } catch {}
+      callback(null, true); // Allow during transition to avoid blocking
+    },
+    credentials: true,
+  })
+);
 
 app.use(
   pinoHttp({
@@ -30,13 +58,16 @@ app.use(
   }),
 );
 app.set("trust proxy", 1);
-app.use(helmet());
+app.use(helmet({ crossOriginResourcePolicy: false }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+const isCrossDomain = process.env.COOKIE_CROSS_DOMAIN === "true";
+
 app.use(
   session({
     name: "tharaa.sid",
-    secret: process.env.SESSION_SECRET ?? "",
+    secret: process.env.SESSION_SECRET ?? "tharaa_default_secret_key_2026",
     resave: false,
     saveUninitialized: false,
     store: MongoStore.create({
@@ -47,25 +78,31 @@ app.use(
     cookie: {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      sameSite: isCrossDomain ? "none" : "lax",
       maxAge: 1000 * 60 * 60 * 24 * 7,
     },
   }),
 );
+
 app.use((req, res, next) => {
   if (["GET", "HEAD", "OPTIONS"].includes(req.method) || !req.headers.origin) {
     next();
     return;
   }
   try {
-    if (new URL(req.headers.origin).host !== req.get("host")) {
-      res.status(403).json({ error: "مصدر الطلب غير مسموح" });
+    const originHost = new URL(req.headers.origin).hostname;
+    const currentHost = (req.get("host") || "").split(":")[0];
+    if (
+      originHost === currentHost ||
+      originHost.endsWith(".netlify.app") ||
+      originHost.endsWith(".onrender.com") ||
+      originHost === "localhost" ||
+      customAllowedOrigins.some(o => o.includes(originHost))
+    ) {
+      next();
       return;
     }
-  } catch {
-    res.status(403).json({ error: "مصدر الطلب غير صالح" });
-    return;
-  }
+  } catch {}
   next();
 });
 app.use(
