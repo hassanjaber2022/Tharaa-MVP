@@ -3,7 +3,14 @@
   publish = "artifacts/tharaa/dist/public"
 
 [[redirects]]
+  from = "/api/*"
+  to = "https://tharaa-api.onrender.com/api/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
+
 
