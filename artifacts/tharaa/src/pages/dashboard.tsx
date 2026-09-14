@@ -43,6 +43,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useUserProfile } from '@/hooks/use-user-profile';
 import { evaluateReturnYield } from '@/lib/user-profile';
 import { StripeCheckoutModal } from '@/components/billing/StripeCheckoutModal';
+import { CareerBoosterSection } from '@/components/career/CareerBoosterSection';
 
 interface GoalVault {
   id: string;
@@ -664,6 +665,18 @@ export default function Dashboard() {
             </span>
           </div>
         </Card>
+      </div>
+
+      {/* 2.9 LIVE CAREER & SIDE-INCOME ACCELERATOR (2 APIs CONNECTED) */}
+      <div className="mb-12">
+        <CareerBoosterSection
+          initialCategory={typeof window !== 'undefined' ? localStorage.getItem('tharaa_user_career') || 'software-development' : 'software-development'}
+          currentSavings={currentSavings}
+          currentMonthlySavings={monthlyCapacity}
+          annualExpenses={annualExpenses}
+          currentAge={currentAge}
+          targetAge={targetAge}
+        />
       </div>
 
       {/* 3. SMART GOAL VAULTS (صناديق الأهداف الذكية) */}

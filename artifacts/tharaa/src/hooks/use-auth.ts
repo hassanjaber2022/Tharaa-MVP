@@ -30,7 +30,7 @@ export function useAuth() {
     };
   }, []);
 
-  const { data: apiUser, isLoading: isApiLoading } = useGetCurrentUser({
+  const { data: apiUser } = useGetCurrentUser({
     query: {
       retry: false,
       enabled: false,
@@ -38,9 +38,9 @@ export function useAuth() {
     },
   });
 
-  // Single source of truth is local user
   const activeUser = localUser;
 
+  // 1. Login with Phone OTP
   const loginWithPhoneOtp = useCallback(
     async (phone: string, countryCode: string, code?: string, name?: string) => {
       const user = await authService.verifyPhoneOtp(phone, countryCode, code, name);
@@ -51,6 +51,56 @@ export function useAuth() {
     [queryClient]
   );
 
+  // 2. Login with Email OTP
+  const loginWithEmailOtp = useCallback(
+    async (email: string, code?: string, name?: string) => {
+      const user = await authService.verifyEmailOtp(email, code, name);
+      setLocalUser(user);
+      queryClient.setQueryData(getGetCurrentUserQueryKey(), user);
+      return user;
+    },
+    [queryClient]
+  );
+
+  // 3. Send Phone OTP
+  const sendPhoneOtp = useCallback(async (phone: string, countryCode: string) => {
+    return await authService.sendPhoneOtp(phone, countryCode);
+  }, []);
+
+  // 4. Send Email OTP
+  const sendEmailOtp = useCallback(async (email: string) => {
+    return await authService.sendEmailOtp(email);
+  }, []);
+
+  // 5. Phone / Email + Password Login
+  const loginWithPassword = useCallback(
+    async (identifier: string, password: string) => {
+      const user = await authService.loginWithPassword(identifier, password);
+      setLocalUser(user);
+      queryClient.setQueryData(getGetCurrentUserQueryKey(), user);
+      return user;
+    },
+    [queryClient]
+  );
+
+  // 6. Register with Phone / Email + Password
+  const registerWithPassword = useCallback(
+    async (params: {
+      name: string;
+      phone?: string;
+      email?: string;
+      password?: string;
+      countryCode?: string;
+    }) => {
+      const user = await authService.registerWithPassword(params);
+      setLocalUser(user);
+      queryClient.setQueryData(getGetCurrentUserQueryKey(), user);
+      return user;
+    },
+    [queryClient]
+  );
+
+  // 7. Direct Phone Login
   const loginWithPhoneDirect = useCallback(
     (phone: string, countryCode: string, name?: string) => {
       const user = authService.loginWithPhoneDirect(phone, countryCode, name);
@@ -61,10 +111,7 @@ export function useAuth() {
     [queryClient]
   );
 
-  const sendPhoneOtp = useCallback(async (phone: string, countryCode: string) => {
-    return await authService.sendPhoneOtp(phone, countryCode);
-  }, []);
-
+  // 8. Demo User Login
   const loginDemoUser = useCallback(() => {
     const user = authService.loginDemoUser();
     setLocalUser(user);
@@ -72,9 +119,12 @@ export function useAuth() {
     return user;
   }, [queryClient]);
 
+  // 9. Legacy / Simple Email Login
   const loginWithEmail = useCallback(
     async (email: string, password?: string) => {
-      const user = await authService.loginWithEmail(email, password);
+      const user = password
+        ? await authService.loginWithPassword(email, password)
+        : await authService.verifyEmailOtp(email);
       setLocalUser(user);
       queryClient.setQueryData(getGetCurrentUserQueryKey(), user);
       return user;
@@ -82,21 +132,19 @@ export function useAuth() {
     [queryClient]
   );
 
+  // 10. Logout
   const logout = useCallback(() => {
-    // 1. Instant local logout
     authService.logout();
     setLocalUser(null);
     queryClient.removeQueries({ queryKey: getGetCurrentUserQueryKey() });
     queryClient.setQueryData(getGetCurrentUserQueryKey(), null);
     queryClient.clear();
 
-    // 2. Immediate toast
     toast({
       title: 'تم تسجيل الخروج بنجاح 👋',
       description: 'نراك قريباً في ثراء',
     });
 
-    // 3. Navigate cleanly to login page
     setLocation('/login');
     if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
       setTimeout(() => {
@@ -106,7 +154,6 @@ export function useAuth() {
       }, 100);
     }
 
-    // 4. Optional background server logout without blocking UI
     try {
       fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
     } catch {}
@@ -117,8 +164,12 @@ export function useAuth() {
     isLoading: false,
     isAuthenticated: !!activeUser,
     loginWithPhoneOtp,
-    loginWithPhoneDirect,
+    loginWithEmailOtp,
     sendPhoneOtp,
+    sendEmailOtp,
+    loginWithPassword,
+    registerWithPassword,
+    loginWithPhoneDirect,
     loginDemoUser,
     loginWithEmail,
     logout,

@@ -27,7 +27,8 @@ import {
   Zap,
   Lock,
   Check,
-  Percent
+  Percent,
+  Briefcase
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { 
@@ -37,6 +38,8 @@ import {
   calculateFutureWealth 
 } from '@/lib/user-profile';
 import { DEFAULT_STRIPE_PAYMENT_LINK } from '@/components/billing/StripeCheckoutModal';
+import { CareerBoosterSection } from '@/components/career/CareerBoosterSection';
+import { CAREER_FIELDS } from '@/lib/career-api';
 
 export default function Onboarding() {
   const [, setLocation] = useLocation();
@@ -53,6 +56,9 @@ export default function Onboarding() {
   const [currentSavings, setCurrentSavings] = useState(8000);
   const [emergencyMonths, setEmergencyMonths] = useState(6);
   const [riskCategory, setRiskCategory] = useState<'conservative' | 'balanced' | 'growth'>('balanced');
+  const [careerCategory, setCareerCategory] = useState<string>(
+    () => (typeof window !== 'undefined' ? localStorage.getItem('tharaa_user_career') || 'software-development' : 'software-development')
+  );
 
   // Real financial calculations based strictly on user input
   const totalMonthlyExpenses = essentialExpenses + obligations;
@@ -188,6 +194,9 @@ export default function Onboarding() {
     };
 
     saveUserProfile(profileData);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('tharaa_user_career', careerCategory);
+    }
 
     if (andRedirectToStripe) {
       const stripeUrl = localStorage.getItem('tharaa_stripe_payment_link') || (import.meta.env.VITE_STRIPE_PAYMENT_LINK as string) || DEFAULT_STRIPE_PAYMENT_LINK;
@@ -322,6 +331,41 @@ export default function Onboarding() {
                       {age}
                     </button>
                   ))}
+                </div>
+              </div>
+
+              {/* اختيار مجال وتخصص العمل لربطه بالـ 2 APIs للوظائف */}
+              <div className="pt-4 border-t border-border/50">
+                <div className="flex justify-between items-center mb-1">
+                  <label className="text-base font-bold text-foreground">
+                    شنو مجال وتخصص عملك الحالي؟ 💼
+                  </label>
+                  <span className="text-xs text-secondary font-bold font-mono">
+                    فرص دخل إضافي حية ⚡
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground mb-3">
+                  سنعرض لك شواغر عن بُعد حقيقية تناسب خبرتك لتسريع سن تقاعدك (مربوطة بـ 2 APIs).
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {CAREER_FIELDS.map((f) => {
+                    const isSel = careerCategory === f.apiCategory;
+                    return (
+                      <button
+                        key={f.id}
+                        type="button"
+                        onClick={() => setCareerCategory(f.apiCategory)}
+                        className={`p-3 rounded-2xl border text-xs font-bold transition-all text-right cursor-pointer flex flex-col gap-1 ${
+                          isSel
+                            ? 'border-primary bg-primary/15 text-primary shadow-sm scale-[1.02]'
+                            : 'border-border/60 bg-card hover:bg-muted/60 text-muted-foreground'
+                        }`}
+                      >
+                        <span className="text-xl">{f.icon}</span>
+                        <span className="text-foreground leading-snug">{f.titleArabic}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -472,6 +516,19 @@ export default function Onboarding() {
                     {step2Alert.tip}
                   </div>
                 )}
+              </div>
+
+              {/* تسريع التقاعد ومضاعفة الدخل عبر 2 APIs للوظائف والعملات */}
+              <div className="pt-4 border-t border-border/50">
+                <CareerBoosterSection
+                  initialCategory={careerCategory}
+                  currentSavings={currentSavings}
+                  currentMonthlySavings={calculatedSavingsCapacity}
+                  annualExpenses={annualExpenses}
+                  currentAge={currentAge}
+                  targetAge={targetAge}
+                  isCompact={true}
+                />
               </div>
 
               <div className="flex gap-3 pt-2">

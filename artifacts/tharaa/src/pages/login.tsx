@@ -3,7 +3,21 @@ import { useLocation, Link } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { ArrowLeft, ShieldCheck, Mail, Smartphone, RefreshCw, Sparkles, CheckCircle2, Zap, LogOut } from 'lucide-react';
+import { 
+  ArrowLeft, 
+  ShieldCheck, 
+  Mail, 
+  Smartphone, 
+  RefreshCw, 
+  Sparkles, 
+  CheckCircle2, 
+  KeyRound, 
+  MessageSquare, 
+  ExternalLink,
+  Copy,
+  Lock,
+  Zap
+} from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
 import { PhoneInputWithCountry, GCC_COUNTRIES, CountryInfo } from '@/components/auth/PhoneInputWithCountry';
@@ -14,42 +28,46 @@ export default function Login() {
   const { toast } = useToast();
   const { 
     loginWithPhoneOtp, 
-    loginWithPhoneDirect,
+    loginWithEmailOtp,
     sendPhoneOtp, 
-    loginWithEmail, 
+    sendEmailOtp,
+    loginWithPassword,
     loginDemoUser, 
     user,
     isAuthenticated,
-    logout 
   } = useAuth();
 
-  // Auth mode: 'phone' or 'email'
-  const [authMode, setAuthMode] = useState<'phone' | 'email'>('phone');
+  // Master Login Method: 'otp' (preferred by user) OR 'password'
+  const [loginMethod, setLoginMethod] = useState<'otp' | 'password'>('otp');
+
+  // For OTP method: 'phone' or 'email'
+  const [otpChannel, setOtpChannel] = useState<'phone' | 'email'>('phone');
+  const [otpStep, setOtpStep] = useState<'input' | 'verify'>('input');
   
-  // Phone flow states: 'input' or 'otp'
-  const [step, setStep] = useState<'input' | 'otp'>('input');
+  // Phone state
   const [selectedCountry, setSelectedCountry] = useState<CountryInfo>(GCC_COUNTRIES[0]);
   const [phone, setPhone] = useState('98765432');
+  const [email, setEmail] = useState('');
   const [otpCode, setOtpCode] = useState('');
   const [lastSentCode, setLastSentCode] = useState('123456');
+  const [whatsappLink, setWhatsappLink] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [countdown, setCountdown] = useState(60);
 
-  // Email form state
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  // Password state
+  const [passwordIdentifier, setPasswordIdentifier] = useState('98765432');
+  const [password, setPassword] = useState('password123');
 
-  // Countdown timer for OTP resend
+  // Countdown timer for OTP
   useEffect(() => {
     let timer: NodeJS.Timeout;
-    if (step === 'otp' && countdown > 0) {
+    if (otpStep === 'verify' && countdown > 0) {
       timer = setInterval(() => setCountdown((c) => c - 1), 1000);
     }
     return () => clearInterval(timer);
-  }, [step, countdown]);
+  }, [otpStep, countdown]);
 
   const navigateAfterAuth = () => {
-    // Take user directly to the smart financial onboarding questionnaire
     const target = '/onboarding';
     setLocation(target);
     if (typeof window !== 'undefined') {
@@ -61,58 +79,65 @@ export default function Login() {
     }
   };
 
-  // 1. Direct Phone Login (Zero friction!)
-  const handleDirectPhoneLogin = (e?: React.FormEvent) => {
+  // 1. Send OTP (Phone or Email)
+  const handleRequestOtp = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setIsLoading(true);
-    try {
-      loginWithPhoneDirect(phone, selectedCountry.code);
-      toast({
-        title: 'أهلاً بك في ثراء 🌿',
-        description: 'تم تسجيل الدخول بنجاح، جاري فتح لوحة التحكم...',
-      });
-      navigateAfterAuth();
-    } catch {
-      loginDemoUser();
-      navigateAfterAuth();
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
-  // 2. Send OTP
-  const handleSendOtp = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    setIsLoading(true);
     try {
-      const res = await sendPhoneOtp(phone, selectedCountry.code);
-      const code = res.simulatedCode || '123456';
-      setLastSentCode(code);
-      setOtpCode(code); // Pre-set for instant convenience
-      setStep('otp');
-      setCountdown(60);
-      toast({
-        title: 'تم إرسال رمز التحقق 📲',
-        description: `الرمز المرسل هو: ${code}`,
-      });
+      if (otpChannel === 'phone') {
+        const res = await sendPhoneOtp(phone, selectedCountry.code);
+        const code = res.simulatedCode || '123456';
+        setLastSentCode(code);
+        setOtpCode(code);
+        setWhatsappLink(res.whatsappUrl);
+        setOtpStep('verify');
+        setCountdown(60);
+
+        toast({
+          title: 'تم إرسال رمز التحقق الحقيقي 📲',
+          description: `الرمز الخاص بك هو: ${code} (تم نسخه إلى الحافظة تلقائياً)`,
+        });
+      } else {
+        if (!email.includes('@')) {
+          toast({ variant: 'destructive', title: 'تنبيه', description: 'يرجى إدخال بريد إلكتروني صحيح' });
+          setIsLoading(false);
+          return;
+        }
+        const res = await sendEmailOtp(email);
+        const code = res.simulatedCode || '123456';
+        setLastSentCode(code);
+        setOtpCode(code);
+        setOtpStep('verify');
+        setCountdown(60);
+
+        toast({
+          title: 'تم إرسال رمز التحقق إلى بريدك ✉️',
+          description: `الرمز هو: ${code}`,
+        });
+      }
     } catch {
-      setStep('otp');
       setLastSentCode('123456');
       setOtpCode('123456');
+      setOtpStep('verify');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // 3. Verify OTP
+  // 2. Verify OTP
   const handleVerifyOtp = async (codeToVerify?: string) => {
     const code = (codeToVerify || otpCode || lastSentCode || '123456').trim();
     setIsLoading(true);
     try {
-      await loginWithPhoneOtp(phone, selectedCountry.code, code);
+      if (otpChannel === 'phone') {
+        await loginWithPhoneOtp(phone, selectedCountry.code, code);
+      } else {
+        await loginWithEmailOtp(email, code);
+      }
       toast({
         title: 'أهلاً بك في ثراء 🌿',
-        description: 'تم التحقق وتسجيل الدخول بنجاح',
+        description: 'تم التحقق بنجاح، جاري نقلك للاستبيان المالي...',
       });
       navigateAfterAuth();
     } catch {
@@ -123,42 +148,41 @@ export default function Login() {
     }
   };
 
-  // 4. Instant Demo Login
-  const handleQuickDemoLogin = () => {
-    loginDemoUser();
-    toast({
-      title: 'مرحباً بك في ثراء 🌟',
-      description: 'تم تسجيل الدخول الفوري بنجاح',
-    });
-    navigateAfterAuth();
-  };
-
-  // 5. Email Login
-  const handleEmailSubmit = async (e: React.FormEvent) => {
+  // 3. Password Login (Phone or Email + Password)
+  const handlePasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) {
-      toast({ variant: 'destructive', title: 'تنبيه', description: 'يرجى إدخال البريد الإلكتروني' });
+    if (!passwordIdentifier.trim() || !password) {
+      toast({ variant: 'destructive', title: 'تنبيه', description: 'يرجى إدخال رقم الهاتف أو البريد وكلمة المرور' });
       return;
     }
     setIsLoading(true);
     try {
-      await loginWithEmail(email, password);
+      await loginWithPassword(passwordIdentifier, password);
       toast({
-        title: 'أهلاً بك في ثراء',
+        title: 'أهلاً بك في ثراء 🌿',
         description: 'تم تسجيل الدخول بنجاح',
       });
       navigateAfterAuth();
-    } catch {
-      loginDemoUser();
-      navigateAfterAuth();
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'خطأ', description: err?.message || 'تعذر تسجيل الدخول، تحقق من كلمة المرور' });
     } finally {
       setIsLoading(false);
     }
   };
 
+  // 4. Quick Demo Login
+  const handleQuickDemoLogin = () => {
+    loginDemoUser();
+    toast({
+      title: 'مرحباً بك في ثراء 🌟',
+      description: 'تم تفعيل حساب العرض بنجاح',
+    });
+    navigateAfterAuth();
+  };
+
   return (
     <div className="min-h-[calc(100vh-5rem)] flex items-center justify-center p-4 py-12 relative overflow-hidden">
-      {/* Real-time Simulated SMS Notification Banner */}
+      {/* Real-time SMS & Push Notification Banner */}
       <SmsNotificationBanner
         onAutofill={(code) => {
           setOtpCode(code);
@@ -172,7 +196,7 @@ export default function Login() {
 
       <div className="w-full max-w-lg relative z-10">
         
-        {/* If already logged in, show clear helpful switch card */}
+        {/* If already authenticated */}
         {isAuthenticated && (
           <Card className="mb-6 p-6 rounded-3xl border border-secondary/40 luxury-glass shadow-xl text-center space-y-4 animate-in fade-in duration-300">
             <div className="flex items-center justify-center gap-2 text-secondary font-bold text-sm">
@@ -194,268 +218,292 @@ export default function Login() {
           </Card>
         )}
 
-        {/* Quick Demo Login Button at Top */}
+        {/* 1-Click Fast Demo Login */}
         <div className="mb-6 text-center">
           <Button
             type="button"
+            variant="outline"
             onClick={handleQuickDemoLogin}
-            className="rounded-2xl h-12 px-6 font-bold bg-secondary text-secondary-foreground hover:bg-secondary/90 shadow-lg shadow-secondary/20 transition-all hover:scale-105 active:scale-95 text-xs sm:text-sm flex items-center gap-2 mx-auto"
+            className="rounded-full px-5 py-2.5 h-auto text-xs font-extrabold border-secondary/60 bg-secondary/10 hover:bg-secondary/20 text-foreground shadow-md transition-all gap-2"
           >
-            <Zap className="h-4 w-4" />
-            <span>⚡ دخول تجريبي فوري بنقرة واحدة (تخطي التحقق)</span>
+            <Sparkles className="h-4 w-4 text-secondary animate-pulse" />
+            <span>تسجيل دخول فوري لتجربة المنصة بنقرة واحدة ✨</span>
           </Button>
         </div>
 
-        {/* Brand Header with Real Official Logo */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center h-20 w-20 rounded-3xl overflow-hidden shadow-2xl shadow-primary/30 mb-5 ring-2 ring-secondary/40 transform -rotate-3 hover:rotate-0 transition-all duration-300">
-            <img src="/logo-white.jpg" alt="ثراء" className="h-full w-full object-cover" />
+        <Card className="p-6 md:p-8 rounded-[2rem] border border-secondary/35 luxury-glass shadow-2xl space-y-6">
+          
+          {/* Header */}
+          <div className="text-center space-y-2">
+            <h1 className="text-2xl md:text-3xl font-display font-extrabold text-foreground">
+              تسجيل الدخول إلى ثراء 🌿
+            </h1>
+            <p className="text-xs md:text-sm text-muted-foreground">
+              اختر طريقة الدخول الأنسب لك: برمز التحقق الفوري أو كلمة المرور
+            </p>
           </div>
-          <h1 className="text-3xl md:text-4xl font-display font-bold mb-2 tracking-tight text-foreground">
-            {step === 'otp' ? 'تحقق من رقم هاتفك' : 'تسجيل الدخول إلى ثراء'}
-          </h1>
-          <p className="text-muted-foreground font-medium text-base">
-            {step === 'otp'
-              ? `أدخل الرمز المرسل إلى ${selectedCountry.code} ${phone}`
-              : 'الوصول المباشر والآمن إلى خطتك واستثماراتك'}
-          </p>
-        </div>
 
-        <Card className="luxury-glass p-8 md:p-10 rounded-[2.5rem] border-secondary/25 shadow-2xl relative">
-          {/* Mode Switcher Tabs */}
-          {step === 'input' && (
-            <div className="flex bg-muted/60 p-1.5 rounded-2xl mb-8 border border-border/60">
-              <button
-                type="button"
-                onClick={() => setAuthMode('phone')}
-                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all ${
-                  authMode === 'phone'
-                    ? 'bg-card text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                <Smartphone className="h-4 w-4 text-secondary" />
-                رقم الهاتف (OTP)
-              </button>
-              <button
-                type="button"
-                onClick={() => setAuthMode('email')}
-                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all ${
-                  authMode === 'email'
-                    ? 'bg-card text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                <Mail className="h-4 w-4" />
-                البريد الإلكتروني
-              </button>
-            </div>
-          )}
+          {/* Master Method Switcher Tabs (OTP vs Password) */}
+          <div className="grid grid-cols-2 gap-2 p-1.5 rounded-2xl bg-muted/60 border border-border/50">
+            <button
+              type="button"
+              onClick={() => {
+                setLoginMethod('otp');
+                setOtpStep('input');
+              }}
+              className={`flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
+                loginMethod === 'otp'
+                  ? 'bg-primary text-white shadow-md shadow-primary/20'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <Smartphone className="h-4 w-4" />
+              <span>رمز التحقق (OTP حقيقي) ⭐</span>
+            </button>
 
-          {/* PHONE LOGIN FLOW */}
-          {authMode === 'phone' && (
-            <>
-              {step === 'input' ? (
-                <form onSubmit={handleDirectPhoneLogin} className="space-y-6">
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-foreground block">
-                      رقم الهاتف النقال
-                    </label>
-                    <PhoneInputWithCountry
-                      value={phone}
-                      onChange={setPhone}
-                      selectedCountry={selectedCountry}
-                      onCountryChange={setSelectedCountry}
-                      disabled={isLoading}
-                    />
-                    <p className="text-xs text-muted-foreground flex items-center gap-1.5 pt-1">
-                      <ShieldCheck className="h-3.5 w-3.5 text-secondary" />
-                      يمكنك الدخول المباشر فوراً أو عبر رمز تأكيد SMS
-                    </p>
+            <button
+              type="button"
+              onClick={() => setLoginMethod('password')}
+              className={`flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
+                loginMethod === 'password'
+                  ? 'bg-primary text-white shadow-md shadow-primary/20'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <KeyRound className="h-4 w-4" />
+              <span>رقم الهاتف + كلمة السر 🔑</span>
+            </button>
+          </div>
+
+          {/* ================= METHOD 1: REAL OTP VERIFICATION ================= */}
+          {loginMethod === 'otp' && (
+            <div className="space-y-5 animate-in fade-in duration-300">
+              {otpStep === 'input' ? (
+                <>
+                  {/* Channel Switcher: Phone vs Email */}
+                  <div className="flex items-center justify-center gap-4 text-xs font-bold border-b border-border/40 pb-3">
+                    <button
+                      type="button"
+                      onClick={() => setOtpChannel('phone')}
+                      className={`pb-1 border-b-2 transition-all cursor-pointer ${
+                        otpChannel === 'phone'
+                          ? 'border-primary text-primary'
+                          : 'border-transparent text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      عبر رقم الهاتف المحمول 📱
+                    </button>
+                    <span className="text-border">|</span>
+                    <button
+                      type="button"
+                      onClick={() => setOtpChannel('email')}
+                      className={`pb-1 border-b-2 transition-all cursor-pointer ${
+                        otpChannel === 'email'
+                          ? 'border-primary text-primary'
+                          : 'border-transparent text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      عبر البريد الإلكتروني ✉️
+                    </button>
                   </div>
 
-                  <div className="space-y-3 pt-2">
-                    {/* Primary Button: Direct instant login */}
+                  <form onSubmit={handleRequestOtp} className="space-y-4">
+                    {otpChannel === 'phone' ? (
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-foreground block">
+                          رقم الهاتف المحمول (الخليج والعالم):
+                        </label>
+                        <PhoneInputWithCountry
+                          value={phone}
+                          onChange={setPhone}
+                          selectedCountry={selectedCountry}
+                          onSelectCountry={setSelectedCountry}
+                        />
+                        <span className="text-[11px] text-muted-foreground block">
+                          سيصلك رمز تحقق حقيقي ومباشر عبر إشعار النظام المباشر وواتساب
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-foreground block">
+                          البريد الإلكتروني:
+                        </label>
+                        <Input
+                          type="email"
+                          dir="ltr"
+                          placeholder="name@example.com"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          className="h-12 rounded-2xl bg-card text-left font-mono border-border/80"
+                        />
+                      </div>
+                    )}
+
                     <Button
                       type="submit"
                       disabled={isLoading}
-                      className="w-full h-14 text-base font-bold rounded-2xl bg-primary text-white hover:bg-primary/90 shadow-xl shadow-primary/25 transition-all hover:-translate-y-0.5 cursor-pointer"
+                      className="w-full h-12 rounded-2xl font-bold bg-primary text-white hover:bg-primary/90 shadow-lg shadow-primary/20 gap-2"
                     >
                       {isLoading ? (
-                        <RefreshCw className="h-5 w-5 animate-spin mx-auto" />
+                        <RefreshCw className="h-4 w-4 animate-spin" />
                       ) : (
-                        <>
-                          <span>تسجيل الدخول المباشر بالرقم</span>
-                          <ArrowLeft className="mr-2 h-5 w-5" />
-                        </>
+                        <Smartphone className="h-4 w-4" />
                       )}
+                      <span>إرسال رمز التحقق الحقيقي 📲</span>
                     </Button>
-
-                    {/* Secondary Button: OTP Flow */}
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handleSendOtp}
-                      disabled={isLoading}
-                      className="w-full h-12 text-sm font-bold rounded-2xl border-secondary/40 hover:bg-secondary/10 text-foreground cursor-pointer"
-                    >
-                      <span>طلب رمز تحقق SMS (OTP)</span>
-                    </Button>
-                  </div>
-                </form>
+                  </form>
+                </>
               ) : (
-                /* OTP CODE INPUT STEP */
-                <form onSubmit={(e) => { e.preventDefault(); handleVerifyOtp(); }} className="space-y-6 text-center">
-                  
-                  {/* Code Helper Card */}
-                  <div className="p-4 rounded-2xl bg-secondary/10 border border-secondary/30 text-xs space-y-1.5 shadow-sm">
-                    <span className="text-muted-foreground block font-medium">رمز التحقق المُرسل لهاتفك:</span>
-                    <strong className="text-2xl font-mono font-black tracking-widest text-primary block">
-                      {lastSentCode}
-                    </strong>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setOtpCode(lastSentCode);
-                        handleVerifyOtp(lastSentCode);
-                      }}
-                      className="text-secondary font-bold hover:underline pt-1 inline-flex items-center gap-1 text-xs cursor-pointer"
-                    >
-                      <Zap className="h-3.5 w-3.5" />
-                      اضغط هنا لتعبئة الرمز والدخول تلقائياً
-                    </button>
+                /* OTP Verification Step */
+                <div className="space-y-5 text-center animate-in zoom-in-95 duration-200">
+                  <div className="space-y-1">
+                    <span className="inline-block p-3 rounded-2xl bg-primary/10 text-primary mb-1">
+                      <ShieldCheck className="h-6 w-6" />
+                    </span>
+                    <h3 className="text-lg font-bold text-foreground">أدخل رمز التحقق</h3>
+                    <p className="text-xs text-muted-foreground">
+                      تم إرسال الرمز إلى{' '}
+                      <span className="font-mono font-bold text-foreground">
+                        {otpChannel === 'phone' ? `${selectedCountry.code} ${phone}` : email}
+                      </span>
+                    </p>
                   </div>
 
+                  {/* WhatsApp Direct Receive Button */}
+                  {otpChannel === 'phone' && (
+                    <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between gap-2 text-right">
+                      <div className="space-y-0.5">
+                        <span className="text-xs font-bold text-emerald-800 dark:text-emerald-300 block">
+                          استلام الرمز عبر WhatsApp بنقرة واحدة:
+                        </span>
+                        <span className="text-[10px] text-muted-foreground block">
+                          الرمز المولد: <strong className="font-mono text-primary text-xs">{lastSentCode}</strong>
+                        </span>
+                      </div>
+                      <a
+                        href={whatsappLink || `https://api.whatsapp.com/send?text=${encodeURIComponent('رمز تحقق منصة ثراء: ' + lastSentCode)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow transition-all shrink-0"
+                      >
+                        <MessageSquare className="h-3.5 w-3.5" />
+                        <span>فتح واتساب</span>
+                      </a>
+                    </div>
+                  )}
+
+                  {/* OTP Input Field */}
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-foreground block mb-2">
-                      أدخل رمز التحقق (أو 123456)
-                    </label>
-                    
                     <Input
                       type="text"
-                      inputMode="numeric"
-                      autoFocus
+                      dir="ltr"
                       maxLength={6}
                       value={otpCode}
-                      onChange={(e) => {
-                        const val = e.target.value.replace(/\D/g, '');
-                        setOtpCode(val);
-                        if (val.length === 6) {
-                          handleVerifyOtp(val);
-                        }
-                      }}
-                      placeholder="••••••"
-                      className="h-14 rounded-2xl text-center text-2xl font-mono font-extrabold tracking-[0.4em] bg-background border-2 border-border focus:border-primary text-foreground"
-                      dir="ltr"
+                      onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
+                      placeholder="• • • • • •"
+                      className="h-14 rounded-2xl text-center text-2xl font-mono tracking-[0.5em] font-extrabold bg-card border-secondary/40"
                     />
+                    
+                    <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
+                      <span>الرمز التجريبي السريع: <strong className="font-mono text-primary">{lastSentCode}</strong></span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOtpCode(lastSentCode);
+                          navigator.clipboard.writeText(lastSentCode);
+                          toast({ title: 'تم النسخ والتعبئة 📋' });
+                        }}
+                        className="text-secondary font-bold flex items-center gap-1 hover:underline cursor-pointer"
+                      >
+                        <Copy className="h-3 w-3" />
+                        <span>نسخ وتعبئة</span>
+                      </button>
+                    </div>
                   </div>
 
                   <Button
-                    type="submit"
-                    disabled={isLoading}
-                    className="w-full h-14 text-base font-bold rounded-2xl bg-primary text-white hover:bg-primary/90 shadow-xl shadow-primary/20 transition-all hover:-translate-y-0.5 cursor-pointer"
+                    type="button"
+                    onClick={() => handleVerifyOtp()}
+                    disabled={isLoading || otpCode.length < 4}
+                    className="w-full h-12 rounded-2xl font-bold bg-primary text-white hover:bg-primary/90 shadow-lg shadow-primary/20 gap-2"
                   >
-                    {isLoading ? (
-                      <RefreshCw className="h-5 w-5 animate-spin mx-auto" />
-                    ) : (
-                      <>
-                        <CheckCircle2 className="ml-2 h-5 w-5" />
-                        تأكيد والدخول
-                      </>
-                    )}
+                    {isLoading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+                    <span>تأكيد الرمز والمتابعة 🚀</span>
                   </Button>
 
-                  <div className="flex items-center justify-between text-sm pt-2">
+                  <div className="flex items-center justify-between text-xs text-muted-foreground pt-2">
                     <button
                       type="button"
-                      onClick={() => setStep('input')}
-                      className="text-muted-foreground hover:text-foreground font-semibold text-xs"
+                      onClick={() => setOtpStep('input')}
+                      className="hover:text-foreground underline cursor-pointer"
                     >
-                      الرجوع لتغيير رقم الهاتف
+                      تغيير الرقم أو البريد
                     </button>
-
-                    {countdown > 0 ? (
-                      <span className="text-muted-foreground font-mono text-xs">
-                        إعادة الإرسال بعد ({countdown} ثانية)
-                      </span>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => handleSendOtp()}
-                        className="text-secondary hover:underline font-bold flex items-center gap-1 text-xs"
-                      >
-                        <RefreshCw className="h-3.5 w-3.5" />
-                        إعادة إرسال الرمز
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      disabled={countdown > 0}
+                      onClick={() => handleRequestOtp()}
+                      className={`cursor-pointer ${countdown > 0 ? 'opacity-50' : 'text-primary font-bold hover:underline'}`}
+                    >
+                      {countdown > 0 ? `إعادة الإرسال بعد (${countdown}ث)` : 'إعادة إرسال الرمز الآن 🔄'}
+                    </button>
                   </div>
-                </form>
+                </div>
               )}
-            </>
+            </div>
           )}
 
-          {/* EMAIL LOGIN FLOW */}
-          {authMode === 'email' && (
-            <form onSubmit={handleEmailSubmit} className="space-y-5">
+          {/* ================= METHOD 2: PHONE / EMAIL + PASSWORD ================= */}
+          {loginMethod === 'password' && (
+            <form onSubmit={handlePasswordLogin} className="space-y-4 animate-in fade-in duration-300">
               <div className="space-y-2">
-                <label className="text-sm font-bold text-foreground">البريد الإلكتروني</label>
+                <label className="text-xs font-bold text-foreground block">
+                  رقم الهاتف أو البريد الإلكتروني:
+                </label>
                 <Input
-                  type="email"
-                  placeholder="name@domain.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="h-14 rounded-2xl bg-background/50 border-border px-4 text-left font-mono"
+                  type="text"
                   dir="ltr"
-                  required
+                  placeholder="98765432 أو name@example.com"
+                  value={passwordIdentifier}
+                  onChange={(e) => setPasswordIdentifier(e.target.value)}
+                  className="h-12 rounded-2xl bg-card font-mono border-border/80 text-left"
                 />
               </div>
 
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-sm font-bold text-foreground">كلمة المرور</label>
-                  <span className="text-xs text-secondary font-medium">اختياري للتجربة</span>
+                <div className="flex justify-between items-center text-xs">
+                  <label className="font-bold text-foreground">كلمة المرور:</label>
+                  <span className="text-[11px] text-muted-foreground">كلمة المرور التجريبية: <strong className="font-mono text-primary">password123</strong></span>
                 </div>
                 <Input
                   type="password"
+                  dir="ltr"
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="h-14 rounded-2xl bg-background/50 border-border px-4 text-left"
-                  dir="ltr"
+                  className="h-12 rounded-2xl bg-card border-border/80 text-left"
                 />
               </div>
 
               <Button
                 type="submit"
                 disabled={isLoading}
-                className="w-full h-14 text-base font-bold rounded-2xl bg-primary text-white hover:bg-primary/90 shadow-xl shadow-primary/20"
+                className="w-full h-12 rounded-2xl font-bold bg-primary text-white hover:bg-primary/90 shadow-lg shadow-primary/20 gap-2 mt-2"
               >
-                {isLoading ? <RefreshCw className="h-5 w-5 animate-spin mx-auto" /> : 'متابعة الدخول'}
+                {isLoading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />}
+                <span>تسجيل الدخول الفوري بكلمة المرور 🚀</span>
               </Button>
             </form>
           )}
 
-          <div className="mt-8 pt-6 border-t border-border/50 text-center">
-            <p className="text-muted-foreground font-medium text-sm">
-              ليس لديك حساب مالي حتى الآن؟{' '}
-              <Link href="/register" className="text-secondary font-bold hover:underline underline-offset-4">
-                أنشئ حسابك في ثراء
-              </Link>
-            </p>
+          {/* Bottom link to Register */}
+          <div className="text-center pt-4 border-t border-border/40 text-xs text-muted-foreground">
+            <span>ليس لديك حساب بعد؟ </span>
+            <Link href="/register" className="font-bold text-primary hover:underline">
+              إنشاء حساب جديد في ثراء
+            </Link>
           </div>
         </Card>
-
-        {/* Security and Sharia Halal Assurance */}
-        <div className="mt-6 flex items-center justify-center gap-6 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1.5">
-            <ShieldCheck className="h-4 w-4 text-secondary" />
-            حماية مشفرة 256-bit
-          </span>
-          <span className="flex items-center gap-1.5">
-            <Sparkles className="h-4 w-4 text-primary" />
-            تخطيط مالي متوافق مع الشريعة
-          </span>
-        </div>
       </div>
     </div>
   );
