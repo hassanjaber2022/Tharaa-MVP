@@ -52,11 +52,17 @@ export default function Plans() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
+          <Link href="/onboarding">
+            <Button variant="outline" className="h-11 px-5 rounded-2xl font-bold border-secondary/40 bg-secondary/10 hover:bg-secondary/20 text-foreground flex items-center gap-1.5">
+              <span>عدّل خطتك الحالية ✏️</span>
+            </Button>
+          </Link>
+
           <Link href="/calculator">
-            <Button className="h-12 px-7 rounded-2xl font-bold bg-primary text-white hover:bg-primary/90 shadow-xl shadow-primary/20 flex items-center gap-2">
+            <Button className="h-11 px-5 rounded-2xl font-bold bg-primary text-white hover:bg-primary/90 shadow-md shadow-primary/20 flex items-center gap-1.5">
               <Plus className="h-4 w-4" />
-              خطة جديدة
+              <span>إضافة خطة</span>
             </Button>
           </Link>
         </div>

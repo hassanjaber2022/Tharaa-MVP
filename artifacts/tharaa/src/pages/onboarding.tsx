@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -45,7 +45,14 @@ export default function Onboarding() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
+  const [step, setStep] = useState<0 | 1 | 2 | 3 | 4>(0);
+
+  // Auto-scroll to top smoothly whenever step changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [step]);
 
   // Form states with realistic default values for Kuwait & GCC
   const [currentAge, setCurrentAge] = useState(28);
@@ -240,25 +247,105 @@ export default function Onboarding() {
           </p>
 
           {/* Stepper Progress Bar */}
-          <div className="flex items-center justify-center gap-2.5 mt-5 max-w-xs mx-auto">
+          <div className="flex items-center justify-center gap-2 mt-5 max-w-xs mx-auto">
+            <div className={`h-2 flex-1 rounded-full transition-all duration-300 ${step >= 0 ? 'bg-secondary' : 'bg-muted'}`} />
             <div className={`h-2 flex-1 rounded-full transition-all duration-300 ${step >= 1 ? 'bg-primary' : 'bg-muted'}`} />
             <div className={`h-2 flex-1 rounded-full transition-all duration-300 ${step >= 2 ? 'bg-primary' : 'bg-muted'}`} />
             <div className={`h-2 flex-1 rounded-full transition-all duration-300 ${step >= 3 ? 'bg-primary' : 'bg-muted'}`} />
-            <div className={`h-2 flex-1 rounded-full transition-all duration-300 ${step >= 4 ? 'bg-secondary' : 'bg-muted'}`} />
+            <div className={`h-2 flex-1 rounded-full transition-all duration-300 ${step >= 4 ? 'bg-emerald-500' : 'bg-muted'}`} />
           </div>
           <span className="text-xs font-bold text-secondary mt-2 block font-mono">
-            الخطوة {step} من 4: {
-              step === 1 ? 'العمر وسن التقاعد' :
+            {step === 0 ? 'المقدمة: تعرّف على فكرة ثراء وركائز الاستثمار ✨' :
+             `الخطوة ${step} من 4: ${
+              step === 1 ? 'العمر وسن التقاعد وتخصصك' :
               step === 2 ? 'المعاش والمصاريف والمردود' :
               step === 3 ? 'نمط الاستثمار الشرعي' :
               'ملخص خطتك ومزايا اشتراك ثراء بلس'
-            }
+            }`}
           </span>
         </div>
 
         {/* Master Glass Card */}
         <Card className="luxury-glass p-6 sm:p-10 rounded-[2.5rem] border-secondary/30 shadow-2xl relative bg-card text-foreground">
           
+          {/* STEP 0: شرح الموقع وفكرة المنصة قبل البدء في الاستبيان */}
+          {step === 0 && (
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300 text-right">
+              <div className="p-6 rounded-3xl bg-gradient-to-br from-primary/10 via-card to-secondary/15 border border-secondary/35 space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-12 w-12 rounded-2xl bg-primary/15 border border-primary/25 text-primary flex items-center justify-center shrink-0">
+                    <Sparkles className="h-6 w-6 text-secondary" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl sm:text-2xl font-display font-extrabold text-foreground">
+                      تعرّف على فكرة منصة ثراء 🌿
+                    </h2>
+                    <span className="text-xs text-muted-foreground">بوابتك الذكية نحو الاستقلال المالي والتقاعد المبكر</span>
+                  </div>
+                </div>
+
+                <p className="text-sm leading-relaxed text-muted-foreground font-medium">
+                  منصة ثراء ليست مجرد استبيان؛ إنها نظام مالي استثماري متكامل مبني على معايير الشريعة الإسلامية وقاعدة الـ 4% العالمية. صُممت خصيصاً لمساعدتك على معرفة موعد تقاعدك الفعلي وكيفية تنمية أموالك بدون مخاطرة عشوائية.
+                </p>
+
+                {/* 3 Core Pillars */}
+                <div className="grid sm:grid-cols-3 gap-3 pt-2">
+                  <div className="p-4 rounded-2xl bg-card/80 border border-border/60 space-y-1.5">
+                    <div className="flex items-center gap-2 text-primary font-bold text-sm">
+                      <Target className="h-4 w-4 text-secondary" />
+                      <span>1. رقم حريتك (FIRE)</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground leading-snug">
+                      نضرب مصاريفك السنوية × 25 لنحسب الرقم الدقيق الذي تعيش منه مرتاحاً دون الحاجة لراتب.
+                    </p>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-card/80 border border-border/60 space-y-1.5">
+                    <div className="flex items-center gap-2 text-primary font-bold text-sm">
+                      <ShieldCheck className="h-4 w-4 text-emerald-500" />
+                      <span>2. أصول شرعية (AAOIFI)</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground leading-snug">
+                      توزيع علمي للمحفظة بين الأسهم النقية، الصكوك السيادية، وصناديق الريت العقارية.
+                    </p>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-card/80 border border-border/60 space-y-1.5">
+                    <div className="flex items-center gap-2 text-primary font-bold text-sm">
+                      <Briefcase className="h-4 w-4 text-secondary" />
+                      <span>3. مسرّع التقاعد (2 APIs)</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground leading-snug">
+                      ربط مباشر بشواغر عمل إضافي تناسب تخصصك لتختصر 3 إلى 5 سنوات من سن تقاعدك.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="space-y-3 pt-2">
+                <Button
+                  type="button"
+                  onClick={() => setStep(1)}
+                  className="w-full h-14 text-base font-bold rounded-2xl bg-primary text-white hover:bg-primary/90 shadow-xl shadow-primary/25 transition-all hover:scale-[1.01] flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <span>ابدأ تخصيص خطتك الاستثمارية (الخطوة 1 من 4) 🚀</span>
+                  <ArrowLeft className="h-5 w-5" />
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => window.dispatchEvent(new Event('tharaa_open_tour'))}
+                  className="w-full h-12 rounded-2xl border-secondary/40 bg-secondary/10 hover:bg-secondary/20 text-foreground font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all"
+                >
+                  <Sparkles className="h-4 w-4 text-secondary" />
+                  <span>استعراض الجولة التفاعلية المصورة ومحاكي النمو ⚡</span>
+                </Button>
+              </div>
+            </div>
+          )}
+
           {/* STEP 1: العمر وسن التقاعد */}
           {step === 1 && (
             <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300 text-right">
@@ -386,14 +473,25 @@ export default function Onboarding() {
                 </p>
               </div>
 
-              <Button
-                type="button"
-                onClick={() => setStep(2)}
-                className="w-full h-14 text-base font-bold rounded-2xl bg-primary text-white hover:bg-primary/90 shadow-xl shadow-primary/25 transition-all hover:-translate-y-0.5 mt-2"
-              >
-                <span>التالي: معاشك ومصاريفك</span>
-                <ArrowLeft className="mr-2 h-5 w-5" />
-              </Button>
+              <div className="flex gap-3 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setStep(0)}
+                  className="h-14 px-5 rounded-2xl font-bold border-border text-xs sm:text-sm"
+                >
+                  <ArrowRight className="ml-1 h-4 w-4" />
+                  <span>رجوع للمقدمة</span>
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => setStep(2)}
+                  className="flex-1 h-14 text-base font-bold rounded-2xl bg-primary text-white hover:bg-primary/90 shadow-xl shadow-primary/25 transition-all hover:-translate-y-0.5"
+                >
+                  <span>التالي: معاشك ومصاريفك</span>
+                  <ArrowLeft className="mr-2 h-5 w-5" />
+                </Button>
+              </div>
             </div>
           )}
 

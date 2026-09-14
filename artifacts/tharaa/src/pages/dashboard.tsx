@@ -215,7 +215,7 @@ export default function Dashboard() {
           <Link href="/onboarding">
             <Button className="rounded-2xl h-12 px-5 font-bold bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-secondary" />
-              <span>الاستبيان والنموذج الذكي 📝</span>
+              <span>عدّل خطتك ومعطياتك ✏️</span>
             </Button>
           </Link>
 
@@ -284,28 +284,14 @@ export default function Dashboard() {
             </div>
           </div>
 
+          {/* Clean targeted link with zero duplication */}
           <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
             <Link href="/onboarding">
               <Button size="sm" className="rounded-xl font-bold text-xs h-9 bg-primary text-white hover:bg-primary/90 shadow-sm flex items-center gap-1.5">
-                <Sparkles className="h-3.5 w-3.5 text-secondary" />
-                <span>إعادة تعبئة النموذج الذكي</span>
+                <span>عدّل خطتك ومصاريفك ✏️</span>
+                <ArrowLeft className="h-3.5 w-3.5" />
               </Button>
             </Link>
-            <Link href="/settings">
-              <Button variant="outline" size="sm" className="rounded-xl font-bold text-xs h-9 bg-background/80 border-border">
-                الإعدادات
-              </Button>
-            </Link>
-            <Button
-              onClick={() => {
-                const directLink = localStorage.getItem('tharaa_stripe_payment_link') || (import.meta.env.VITE_STRIPE_PAYMENT_LINK as string) || 'https://buy.stripe.com/test_4gM7sK0El18wcsV7pP3Ru00';
-                window.open(directLink, '_blank', 'noopener,noreferrer');
-              }}
-              size="sm" 
-              className="rounded-xl font-bold text-xs h-9 bg-secondary text-secondary-foreground hover:bg-secondary/90 shadow-md"
-            >
-              ترقية لـ Pro
-            </Button>
           </div>
         </div>
       </div>

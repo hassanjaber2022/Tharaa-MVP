@@ -67,7 +67,7 @@ export default function Home() {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 max-w-xl mx-auto">
             <Link href={isAuthenticated ? "/onboarding" : "/register"} className="w-full sm:w-auto">
               <Button size="lg" className="w-full sm:w-auto rounded-2xl px-8 h-16 text-base sm:text-lg font-bold bg-primary text-white hover:bg-primary/90 shadow-2xl shadow-primary/30 transition-all hover:scale-105 active:scale-95">
-                احسب خطتك في دقيقة 🌿
+                {isAuthenticated ? 'عدّل أو تابع خطتك 🌿' : 'احسب خطتك في دقيقة 🌿'}
                 <ArrowLeft className="mr-2 h-5 w-5" />
               </Button>
             </Link>
@@ -267,9 +267,9 @@ export default function Home() {
             <p className="text-white/80 text-base md:text-xl max-w-xl mx-auto mb-10 leading-relaxed">
               انضم إلى آلاف المستثمرين الذين صمموا خريطة طريق واضحة لاستقلالهم المالي وراحة بالهم.
             </p>
-            <Link href={isAuthenticated ? "/dashboard" : "/register"}>
+            <Link href={isAuthenticated ? "/onboarding" : "/register"}>
               <Button size="lg" className="rounded-2xl px-12 h-16 text-lg font-bold bg-secondary text-secondary-foreground hover:bg-secondary/90 shadow-2xl transition-all hover:scale-105">
-                أنشئ خطتك المالية الآن
+                {isAuthenticated ? 'عدّل خطتك المالية الآن' : 'ابدأ خطتك المالية الآن'}
                 <ArrowLeft className="mr-2 h-5 w-5" />
               </Button>
             </Link>
